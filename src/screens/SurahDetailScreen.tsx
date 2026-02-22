@@ -1,14 +1,6 @@
-// Surah Detail Screen — Ayah range selection
 import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    ScrollView,
-    StyleSheet,
-} from 'react-native';
-import { colors, commonStyles, spacing, radius } from '../theme';
+import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { colors, spacing, radius, typography, accessibility } from '~theme/tokens';
 import { Surah } from '~api/quran-api';
 
 const MAX_AYAHS_MOBILE = 10;
@@ -36,180 +28,188 @@ export const SurahDetailScreen: React.FC<SurahDetailScreenProps> = ({ surah, onN
     };
 
     return (
-        <ScrollView style={commonStyles.screen} contentContainerStyle={commonStyles.scrollContent}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={commonStyles.btnGhost}>
-                    <Text style={commonStyles.btnGhostText}>← Back</Text>
-                </TouchableOpacity>
-                <View style={{ marginLeft: spacing.md }}>
-                    <Text style={styles.title}>{surah.englishName}</Text>
-                    <Text style={styles.arabicName}>{surah.arabicName}</Text>
-                </View>
-            </View>
-
-            {/* Surah info card */}
-            <View style={[commonStyles.card, styles.infoCard]}>
-                <View style={styles.infoRow}>
-                    <View style={styles.infoItem}>
-                        <Text style={styles.infoValue}>{surah.number}</Text>
-                        <Text style={styles.infoLabel}>SURAH</Text>
+        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+            {/* Surah Header Card */}
+            <View style={styles.headerCard}>
+                <Text style={styles.arabicHeader}>{surah.arabicName}</Text>
+                <Text style={styles.englishHeader}>{surah.englishName}</Text>
+                <View style={styles.badgeRow}>
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{surah.totalAyahs} Ayahs</Text>
                     </View>
-                    <View style={styles.divider} />
-                    <View style={styles.infoItem}>
-                        <Text style={styles.infoValue}>{surah.totalAyahs}</Text>
-                        <Text style={styles.infoLabel}>AYAHS</Text>
-                    </View>
-                    <View style={styles.divider} />
-                    <View style={styles.infoItem}>
-                        <Text style={[styles.infoValue, { color: colors.gold, fontSize: 14 }]}>
-                            {surah.revelationType}
-                        </Text>
-                        <Text style={styles.infoLabel}>ORIGIN</Text>
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{surah.revelationType}</Text>
                     </View>
                 </View>
             </View>
 
-            {/* Range inputs */}
-            <Text style={commonStyles.sectionTitle}>Select Ayah Range</Text>
-            <View style={commonStyles.card}>
-                <View style={styles.rangeRow}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.rangeLabel}>Start Ayah</Text>
-                        <TextInput
-                            style={[commonStyles.input, styles.rangeInput]}
-                            keyboardType="number-pad"
-                            value={startAyah}
-                            onChangeText={setStartAyah}
-                            maxLength={3}
+            {/* Selection Section */}
+            <View style={styles.inputSection}>
+                <Text style={styles.sectionTitle}>Define Verse Range</Text>
+                <View style={styles.rangeContainer}>
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.inputLabel}>From Ayah</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            keyboardType="number-pad" 
+                            value={startAyah} 
+                            onChangeText={setStartAyah} 
+                            selectionColor={colors.accentEmerald}
                         />
                     </View>
-                    <Text style={styles.arrow}>→</Text>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.rangeLabel}>End Ayah</Text>
-                        <TextInput
-                            style={[commonStyles.input, styles.rangeInput]}
-                            keyboardType="number-pad"
-                            value={endAyah}
-                            onChangeText={setEndAyah}
-                            maxLength={3}
+                    <View style={styles.inputWrapper}>
+                        <Text style={styles.inputLabel}>To Ayah</Text>
+                        <TextInput 
+                            style={styles.input} 
+                            keyboardType="number-pad" 
+                            value={endAyah} 
+                            onChangeText={setEndAyah} 
+                            selectionColor={colors.accentEmerald}
                         />
                     </View>
                 </View>
 
-                {/* Summary */}
-                {isValid && !tooMany && (
-                    <View style={styles.summaryBox}>
-                        <Text style={styles.summaryText}>
-                            {count} ayah{count > 1 ? 's' : ''} selected
-                        </Text>
+                {tooMany && (
+                    <View style={styles.errorBox}>
+                        <Text style={styles.errorText}>⚠ Production Limit: {MAX_AYAHS_MOBILE} Ayahs per video on mobile.</Text>
                     </View>
                 )}
             </View>
 
-            {/* Validation errors */}
-            {start > end && (
-                <View style={commonStyles.errorBox}>
-                    <Text style={{ color: colors.ruby, fontSize: 14 }}>⚠ Start must be ≤ End</Text>
-                </View>
-            )}
-            {tooMany && (
-                <View style={commonStyles.warningBox}>
-                    <Text style={{ color: colors.gold, fontSize: 14 }}>
-                        ⚠ Max {MAX_AYAHS_MOBILE} ayahs on mobile (currently {count})
-                    </Text>
-                </View>
-            )}
-
-            <TouchableOpacity
-                style={[commonStyles.btnPrimary, { marginTop: spacing.md }, (!isValid || tooMany) && { opacity: 0.4 }]}
-                onPress={handleNext}
-                disabled={!isValid || tooMany}
-            >
-                <Text style={commonStyles.btnPrimaryText}>Next: Select Reciter →</Text>
-            </TouchableOpacity>
+            {/* Bottom Actions */}
+            <View style={styles.footer}>
+                <Pressable 
+                    onPress={handleNext} 
+                    disabled={!isValid || tooMany}
+                    style={({ pressed }) => [
+                        styles.btnNext, 
+                        (!isValid || tooMany) && styles.btnDisabled, 
+                        pressed && styles.btnPressed
+                    ]}
+                    {...accessibility.minTouchTarget}
+                >
+                    <Text style={styles.btnText}>Continue to Reciters</Text>
+                </Pressable>
+                
+                <Pressable onPress={onBack} style={styles.btnBack}>
+                    <Text style={styles.btnBackText}>Change Surah</Text>
+                </Pressable>
+            </View>
         </ScrollView>
     );
 };
 
 const styles = StyleSheet.create({
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: spacing.lg,
+    container: { 
+        flex: 1, 
+        backgroundColor: colors.bgBase 
     },
-    title: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: colors.textPrimary,
-        letterSpacing: -0.3,
+    scrollContent: { 
+        padding: spacing.lg, 
+        gap: spacing.xl,
+        paddingBottom: spacing['3xl'] 
     },
-    arabicName: {
-        fontSize: 18,
-        color: colors.textSecondary,
-        marginTop: 2,
+    headerCard: { 
+        backgroundColor: colors.bgSurface, 
+        padding: spacing.xl, 
+        borderRadius: radius.lg, 
+        alignItems: 'center', 
+        gap: spacing.sm, 
+        borderWidth: 1, 
+        borderColor: colors.borderSubtle 
     },
-    infoCard: {
-        marginBottom: spacing.md,
+    arabicHeader: { 
+        ...typography.arabicH1, 
+        color: colors.accentGold 
     },
-    infoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
+    englishHeader: { 
+        ...typography.h2, 
+        color: colors.textPrimary 
     },
-    infoItem: {
-        alignItems: 'center',
-        flex: 1,
+    badgeRow: { 
+        flexDirection: 'row', 
+        gap: spacing.xs 
     },
-    infoValue: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: colors.emerald,
+    badge: { 
+        backgroundColor: colors.accentEmeraldGlow, 
+        paddingHorizontal: spacing.sm, 
+        paddingVertical: 4, 
+        borderRadius: radius.full, 
+        borderWidth: 1, 
+        borderColor: colors.accentEmerald 
     },
-    infoLabel: {
-        fontSize: 10,
-        color: colors.textMuted,
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginTop: 4,
+    badgeText: { 
+        ...typography.small, 
+        color: colors.accentEmerald 
     },
-    divider: {
-        width: 1,
-        height: 40,
-        backgroundColor: colors.borderSubtle,
+    inputSection: { 
+        gap: spacing.md 
     },
-    rangeRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        gap: spacing.sm,
+    sectionTitle: { 
+        ...typography.h3, 
+        color: colors.textSecondary 
     },
-    rangeLabel: {
-        fontSize: 13,
-        color: colors.textMuted,
-        fontWeight: '500',
-        marginBottom: spacing.sm,
+    rangeContainer: { 
+        flexDirection: 'row', 
+        gap: spacing.md 
     },
-    rangeInput: {
-        textAlign: 'center',
-        fontSize: 20,
-        fontWeight: '600',
+    inputWrapper: { 
+        flex: 1, 
+        gap: spacing.xs 
     },
-    arrow: {
-        color: colors.textMuted,
-        fontSize: 18,
-        paddingBottom: 12,
-        paddingHorizontal: spacing.xs,
+    inputLabel: { 
+        ...typography.small, 
+        color: colors.textMuted 
     },
-    summaryBox: {
-        marginTop: spacing.md,
-        padding: spacing.sm,
-        backgroundColor: colors.emeraldGlow,
-        borderRadius: radius.sm,
-        alignItems: 'center',
+    input: { 
+        backgroundColor: colors.bgSurface, 
+        borderRadius: radius.md, 
+        padding: spacing.md, 
+        color: colors.textPrimary, 
+        textAlign: 'center', 
+        ...typography.h3, 
+        borderWidth: 1, 
+        borderColor: colors.borderSubtle 
     },
-    summaryText: {
-        fontSize: 14,
-        color: colors.emerald,
-        fontWeight: '500',
+    errorBox: {
+        backgroundColor: colors.errorGlow,
+        padding: spacing.md,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.error,
     },
+    errorText: { 
+        ...typography.small, 
+        color: colors.error, 
+        textAlign: 'center' 
+    },
+    footer: {
+        gap: spacing.md,
+        marginTop: spacing.md
+    },
+    btnNext: { 
+        backgroundColor: colors.accentEmerald, 
+        padding: spacing.md, 
+        borderRadius: radius.md, 
+        alignItems: 'center' 
+    },
+    btnDisabled: { 
+        opacity: 0.3 
+    },
+    btnPressed: { 
+        backgroundColor: colors.accentEmeraldDim 
+    },
+    btnText: { 
+        ...typography.body, 
+        color: colors.white, 
+        fontWeight: '700' 
+    },
+    btnBack: {
+        padding: spacing.md,
+        alignItems: 'center'
+    },
+    btnBackText: {
+        ...typography.body,
+        color: colors.textMuted
+    }
 });

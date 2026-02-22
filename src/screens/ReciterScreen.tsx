@@ -1,15 +1,14 @@
-// Reciter Screen — reciter selection
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
     TextInput,
     FlatList,
-    TouchableOpacity,
+    Pressable,
     ActivityIndicator,
     StyleSheet,
 } from 'react-native';
-import { colors, commonStyles, spacing, radius } from '../theme';
+import { colors, spacing, radius, typography, accessibility } from '~theme/tokens';
 import { getReciters, Reciter } from '~api/quran-api';
 
 interface ReciterScreenProps {
@@ -34,7 +33,7 @@ export const ReciterScreen: React.FC<ReciterScreenProps> = ({ onSelectReciter, o
             const data = await getReciters('en');
             setReciters(data);
         } catch (err: any) {
-            setError('Failed to load reciters: ' + err.message);
+            setError('Failed to load voices: ' + err.message);
         } finally {
             setLoading(false);
         }
@@ -46,89 +45,79 @@ export const ReciterScreen: React.FC<ReciterScreenProps> = ({ onSelectReciter, o
 
     const renderReciter = useCallback(
         ({ item }: { item: Reciter }) => (
-            <TouchableOpacity
-                style={[commonStyles.card, styles.reciterCard]}
+            <Pressable
+                style={({ pressed }) => [
+                    styles.reciterCard,
+                    pressed && styles.reciterCardPressed
+                ]}
                 onPress={() => onSelectReciter(item)}
-                activeOpacity={0.7}
+                {...accessibility.minTouchTarget}
             >
-                <View style={commonStyles.row}>
-                    {/* Avatar */}
+                <View style={styles.cardContent}>
                     <View style={styles.avatar}>
                         <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
                     </View>
-                    <View style={{ flex: 1, marginLeft: spacing.md }}>
+                    <View style={styles.infoContainer}>
                         <Text style={styles.reciterName}>{item.name}</Text>
-                        {item.style && (
+                        {item.style ? (
                             <View style={styles.styleBadge}>
                                 <Text style={styles.styleBadgeText}>{item.style}</Text>
                             </View>
+                        ) : (
+                            <Text style={styles.metaText}>Classic Recitation</Text>
                         )}
                     </View>
-                    <Text style={{ color: colors.textMuted, fontSize: 18 }}>→</Text>
+                    <Text style={styles.chevron}>→</Text>
                 </View>
-            </TouchableOpacity>
+            </Pressable>
         ),
         [onSelectReciter]
     );
 
     if (loading) {
         return (
-            <View style={[commonStyles.screen, commonStyles.center]}>
-                <ActivityIndicator size="large" color={colors.emerald} />
-                <Text style={{ color: colors.textSecondary, marginTop: spacing.md }}>Loading reciters…</Text>
-            </View>
-        );
-    }
-
-    if (error) {
-        return (
-            <View style={[commonStyles.screen, commonStyles.center, { padding: spacing.lg }]}>
-                <Text style={{ color: colors.ruby, fontSize: 15, textAlign: 'center' }}>{error}</Text>
-                <TouchableOpacity style={[commonStyles.btnSecondary, { marginTop: spacing.md }]} onPress={loadReciters}>
-                    <Text style={commonStyles.btnSecondaryText}>Retry</Text>
-                </TouchableOpacity>
+            <View style={styles.centered}>
+                <ActivityIndicator size="large" color={colors.accentEmerald} />
+                <Text style={styles.loadingText}>Summoning Voices...</Text>
             </View>
         );
     }
 
     return (
-        <View style={commonStyles.screen}>
-            {/* Header */}
+        <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={commonStyles.btnGhost}>
-                    <Text style={commonStyles.btnGhostText}>← Back</Text>
-                </TouchableOpacity>
-                <View style={{ marginLeft: spacing.md }}>
-                    <Text style={styles.title}>Select Reciter</Text>
-                    <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                        {reciters.length} reciters available
-                    </Text>
+                <Pressable onPress={onBack} style={styles.backBtn}>
+                    <Text style={styles.backIcon}>←</Text>
+                </Pressable>
+                <View style={styles.headerTextGroup}>
+                    <Text style={styles.title}>Select Voice</Text>
+                    <Text style={styles.subtitle}>{reciters.length} celestial reciters available</Text>
                 </View>
             </View>
 
-            {/* Search */}
-            <View style={styles.searchContainer}>
-                <Text style={styles.searchIcon}>🔍</Text>
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search reciters…"
-                    placeholderTextColor={colors.textMuted}
-                    value={searchTerm}
-                    onChangeText={setSearchTerm}
-                />
+            <View style={styles.searchSection}>
+                <View style={styles.searchBar}>
+                    <Text style={styles.searchIcon}>🔍</Text>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search reciters..."
+                        placeholderTextColor={colors.textMuted}
+                        value={searchTerm}
+                        onChangeText={setSearchTerm}
+                        selectionColor={colors.accentEmerald}
+                    />
+                </View>
             </View>
 
-            {/* Reciter list */}
             <FlatList
                 data={filteredReciters}
                 keyExtractor={item => item.id}
                 renderItem={renderReciter}
-                contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl }}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
-                    <View style={commonStyles.center}>
-                        <Text style={{ color: colors.textMuted, marginTop: spacing.xl }}>
-                            No reciters matching "{searchTerm}"
-                        </Text>
+                    <View style={styles.centered}>
+                        <Text style={styles.emptyText}>No voices found matching "{searchTerm}"</Text>
                     </View>
                 }
             />
@@ -137,72 +126,147 @@ export const ReciterScreen: React.FC<ReciterScreenProps> = ({ onSelectReciter, o
 };
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: colors.bgBase,
+    },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: spacing.lg,
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: spacing.md,
-        paddingTop: spacing.lg,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.borderSubtle,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.xl,
+        paddingBottom: spacing.md,
+        gap: spacing.md,
     },
-    title: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: colors.textPrimary,
-        letterSpacing: -0.3,
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        margin: spacing.md,
+    backBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: radius.full,
         backgroundColor: colors.bgSurface,
-        borderRadius: radius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 1,
         borderColor: colors.borderSubtle,
+    },
+    backIcon: {
+        color: colors.textPrimary,
+        fontSize: 20,
+    },
+    headerTextGroup: {
+        gap: 2,
+    },
+    title: {
+        ...typography.h2,
+        color: colors.textPrimary,
+    },
+    subtitle: {
+        ...typography.small,
+        color: colors.textMuted,
+    },
+    searchSection: {
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.bgSurface,
+        borderRadius: radius.md,
         paddingHorizontal: spacing.md,
+        height: 52,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
+        gap: spacing.xs,
     },
     searchIcon: {
         fontSize: 16,
-        marginRight: spacing.sm,
     },
     searchInput: {
         flex: 1,
+        ...typography.body,
         color: colors.textPrimary,
-        fontSize: 14,
-        paddingVertical: 12,
+    },
+    listContent: {
+        paddingHorizontal: spacing.lg,
+        paddingBottom: spacing['3xl'],
+        gap: spacing.sm,
     },
     reciterCard: {
-        marginBottom: spacing.sm,
+        backgroundColor: colors.glassBase,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
+        padding: spacing.md,
+    },
+    reciterCardPressed: {
+        backgroundColor: colors.glassElevated,
+        borderColor: colors.borderFocus,
+    },
+    cardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
     },
     avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: colors.emeraldGlow,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: colors.accentEmeraldGlow,
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.accentEmerald,
     },
     avatarText: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: colors.emerald,
+        ...typography.h3,
+        color: colors.accentEmerald,
+        fontWeight: 'bold',
+    },
+    infoContainer: {
+        flex: 1,
+        gap: 2,
     },
     reciterName: {
-        fontSize: 15,
-        fontWeight: '600',
+        ...typography.bodyLg,
         color: colors.textPrimary,
+        fontWeight: '600',
+    },
+    metaText: {
+        ...typography.small,
+        color: colors.textMuted,
     },
     styleBadge: {
-        marginTop: 4,
         alignSelf: 'flex-start',
-        backgroundColor: colors.goldSoft,
+        backgroundColor: colors.accentGoldGlow,
         borderRadius: radius.full,
         paddingHorizontal: 8,
         paddingVertical: 2,
+        borderWidth: 0.5,
+        borderColor: colors.accentGold,
     },
     styleBadgeText: {
-        fontSize: 11,
-        color: colors.gold,
-        fontWeight: '600',
+        fontSize: 10,
+        color: colors.accentGold,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+    },
+    chevron: {
+        color: colors.textMuted,
+        fontSize: 18,
+    },
+    loadingText: {
+        ...typography.body,
+        color: colors.textSecondary,
+        marginTop: spacing.md,
+    },
+    emptyText: {
+        ...typography.body,
+        color: colors.textMuted,
     },
 });
