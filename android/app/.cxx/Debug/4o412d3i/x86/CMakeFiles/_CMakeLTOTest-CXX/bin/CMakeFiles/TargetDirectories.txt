@@ -1,4 +1,0 @@
-D:/projects/quran mobile/android/app/.cxx/Debug/4o412d3i/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir
-D:/projects/quran mobile/android/app/.cxx/Debug/4o412d3i/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir
-D:/projects/quran mobile/android/app/.cxx/Debug/4o412d3i/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/edit_cache.dir
-D:/projects/quran mobile/android/app/.cxx/Debug/4o412d3i/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/rebuild_cache.dir

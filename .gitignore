@@ -11,3 +11,13 @@ Thumbs.db
 .spectify
 AGENTS.md
 prd.md
+
+# Native folders (ignoring Java, Kotlin, Gradle, iOS code as requested)
+android/
+ios/
+
+# Build artifacts
+*.apk
+*.aab
+*.keystore
+*.jks

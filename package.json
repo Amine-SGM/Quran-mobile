@@ -17,7 +17,7 @@
     "@react-native/new-app-screen": "0.84.0",
     "@react-navigation/native": "^7.1.0",
     "@react-navigation/native-stack": "^7.3.0",
-    "ffmpeg-kit-react-native": "^6.0.2",
+    "ffmpeg-kit-react-native-alt": "^6.0.6",
     "react": "19.2.3",
     "react-native": "0.84.0",
     "react-native-canvas": "^0.1.38",

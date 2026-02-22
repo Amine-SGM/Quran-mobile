@@ -1,7 +1,8 @@
 // FFmpeg service for mobile
 // Uses ffmpeg-kit-react-native for video rendering with real progress tracking
 
-import { FFmpegKit, FFprobeKit, ReturnCode, Statistics } from 'ffmpeg-kit-react-native';
+// @ts-ignore - alt package declares itself as ffmpeg-kit-react-native
+import { FFmpegKit, FFprobeKit, ReturnCode, Statistics, FFmpegSession } from 'ffmpeg-kit-react-native-alt';
 import RNFS from 'react-native-fs';
 
 export interface SubtitleRenderData {
@@ -187,12 +188,12 @@ function buildSubtitlesFilter(
     const outlineWidth = subtitles.color === 'black_outline' ? 3 : 2;
     const fontSize = subtitles.fontSize;
 
-    // Escape path for FFmpeg filter (backslashes and colons need escaping)
+    // Escape path for FFmpeg filter - colons must be escaped in filter values
     const escapedPath = srtPath
         .replace(/\\/g, '/')
         .replace(/:/g, '\\:');
 
-    const forceStyle = [
+    const forceStyleRaw = [
         `FontSize=${fontSize}`,
         `PrimaryColour=${primaryColor}`,
         `OutlineColour=${outlineColor}`,
@@ -204,7 +205,11 @@ function buildSubtitlesFilter(
         `WrapStyle=1`,
     ].join(',');
 
-    return `subtitles='${escapedPath}':force_style='${forceStyle}'`;
+    // Escape commas in force_style value for FFmpeg filter syntax
+    const forceStyle = forceStyleRaw.replace(/,/g, '\\,');
+
+    // Note: When using FFmpegKit programmatically, escape special chars but don't use quotes
+    return `subtitles=${escapedPath}:force_style=${forceStyle}`;
 }
 
 /**
@@ -265,12 +270,13 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
         videoFilter = scaleFilter;
     }
 
-    // Build FFmpeg command
+    // Build FFmpeg command - use mpeg4 software encoder (more compatible than mediacodec)
+    // Note: FFmpegKit executes directly without shell, so don't wrap filter in quotes
     const cmd = [
         '-i', videoFile,
         '-f', 'concat', '-safe', '0', '-i', audioListPath,
-        '-vf', `"${videoFilter}"`,
-        '-c:v', 'libx264', '-crf', '28', '-preset', 'veryfast',
+        '-vf', videoFilter,
+        '-c:v', 'mpeg4', '-q:v', '5', '-tag:v', 'avc1',
         '-c:a', 'aac', '-b:a', '128k',
         '-map', '0:v:0', '-map', '1:a:0',
         '-shortest',
@@ -282,7 +288,7 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
         FFmpegKit.executeAsync(
             cmd,
             // Complete callback
-            async (session) => {
+            async (session: any) => {
                 const returnCode = await session.getReturnCode();
                 if (ReturnCode.isSuccess(returnCode)) {
                     if (onProgress) onProgress(100);
