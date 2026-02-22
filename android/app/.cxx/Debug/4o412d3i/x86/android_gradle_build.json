@@ -1,0 +1,96 @@
+{
+  "buildFiles": [
+    "D:\\projects\\quran mobile\\node_modules\\@react-native-async-storage\\async-storage\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
+    "D:\\projects\\quran mobile\\node_modules\\@react-native-community\\slider\\android\\src\\main\\jni\\CMakeLists.txt",
+    "D:\\projects\\quran mobile\\node_modules\\react-native-image-picker\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
+    "D:\\projects\\quran mobile\\node_modules\\react-native-safe-area-context\\android\\src\\main\\jni\\CMakeLists.txt",
+    "D:\\projects\\quran mobile\\node_modules\\react-native-screens\\android\\src\\main\\jni\\CMakeLists.txt",
+    "D:\\projects\\quran mobile\\node_modules\\react-native-share\\android\\build\\generated\\source\\codegen\\jni\\CMakeLists.txt",
+    "D:\\projects\\quran mobile\\node_modules\\react-native\\ReactAndroid\\cmake-utils\\default-app-setup\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\Amine\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "D:\\projects\\quran mobile\\android\\app\\.cxx\\Debug\\4o412d3i\\x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\Amine\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "D:\\projects\\quran mobile\\android\\app\\.cxx\\Debug\\4o412d3i\\x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "appmodules::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "appmodules",
+      "output": "D:\\projects\\quran mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\4o412d3i\\obj\\x86\\libappmodules.so",
+      "runtimeFiles": [
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\e2575a32666c9d6ebbf516280d8f962f\\transformed\\fbjni-0.7.0\\prefab\\modules\\fbjni\\libs\\android.x86\\libfbjni.so",
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\6674e6cc609acce3f4c1e3e62b9ca47c\\transformed\\react-android-0.84.0-debug\\prefab\\modules\\jsi\\libs\\android.x86\\libjsi.so",
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\6674e6cc609acce3f4c1e3e62b9ca47c\\transformed\\react-android-0.84.0-debug\\prefab\\modules\\reactnative\\libs\\android.x86\\libreactnative.so"
+      ]
+    },
+    "react_codegen_RNCSlider::@4898bc4726ecf1751b6a": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_RNCSlider",
+      "output": "D:\\projects\\quran mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\4o412d3i\\obj\\x86\\libreact_codegen_RNCSlider.so",
+      "runtimeFiles": [
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\e2575a32666c9d6ebbf516280d8f962f\\transformed\\fbjni-0.7.0\\prefab\\modules\\fbjni\\libs\\android.x86\\libfbjni.so",
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\6674e6cc609acce3f4c1e3e62b9ca47c\\transformed\\react-android-0.84.0-debug\\prefab\\modules\\jsi\\libs\\android.x86\\libjsi.so",
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\6674e6cc609acce3f4c1e3e62b9ca47c\\transformed\\react-android-0.84.0-debug\\prefab\\modules\\reactnative\\libs\\android.x86\\libreactnative.so"
+      ]
+    },
+    "react_codegen_RNImagePickerSpec::@f66ee9a2efecfb28bee4": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_RNImagePickerSpec"
+    },
+    "react_codegen_RNShareSpec::@e6c4c2b5aedb2ea213b7": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_RNShareSpec"
+    },
+    "react_codegen_rnasyncstorage::@1596841e19ec5b9eeffe": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rnasyncstorage"
+    },
+    "react_codegen_rnscreens::@25bcbd507e98d3a854ad": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_rnscreens",
+      "output": "D:\\projects\\quran mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\4o412d3i\\obj\\x86\\libreact_codegen_rnscreens.so",
+      "runtimeFiles": [
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\6674e6cc609acce3f4c1e3e62b9ca47c\\transformed\\react-android-0.84.0-debug\\prefab\\modules\\reactnative\\libs\\android.x86\\libreactnative.so",
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\6674e6cc609acce3f4c1e3e62b9ca47c\\transformed\\react-android-0.84.0-debug\\prefab\\modules\\jsi\\libs\\android.x86\\libjsi.so",
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\e2575a32666c9d6ebbf516280d8f962f\\transformed\\fbjni-0.7.0\\prefab\\modules\\fbjni\\libs\\android.x86\\libfbjni.so"
+      ]
+    },
+    "react_codegen_safeareacontext::@7984cd80db47aa7b952a": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "react_codegen_safeareacontext",
+      "output": "D:\\projects\\quran mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\4o412d3i\\obj\\x86\\libreact_codegen_safeareacontext.so",
+      "runtimeFiles": [
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\e2575a32666c9d6ebbf516280d8f962f\\transformed\\fbjni-0.7.0\\prefab\\modules\\fbjni\\libs\\android.x86\\libfbjni.so",
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\6674e6cc609acce3f4c1e3e62b9ca47c\\transformed\\react-android-0.84.0-debug\\prefab\\modules\\jsi\\libs\\android.x86\\libjsi.so",
+        "C:\\Users\\Amine\\.gradle\\caches\\9.0.0\\transforms\\6674e6cc609acce3f4c1e3e62b9ca47c\\transformed\\react-android-0.84.0-debug\\prefab\\modules\\reactnative\\libs\\android.x86\\libreactnative.so"
+      ]
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "C:\\Users\\Amine\\AppData\\Local\\Android\\Sdk\\ndk\\27.1.12297006\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe",
+      "cppCompilerExecutable": "C:\\Users\\Amine\\AppData\\Local\\Android\\Sdk\\ndk\\27.1.12297006\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}
