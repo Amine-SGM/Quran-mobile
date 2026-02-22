@@ -10,7 +10,7 @@ import {
     StyleSheet,
 } from 'react-native';
 import { colors, commonStyles, spacing, radius } from '../theme';
-import { getReciters, Reciter } from '../services/quran-api';
+import { getReciters, Reciter } from '~api/quran-api';
 
 interface ReciterScreenProps {
     onSelectReciter: (reciter: Reciter) => void;

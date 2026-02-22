@@ -9,7 +9,7 @@ import {
     StyleSheet,
 } from 'react-native';
 import { colors, commonStyles, spacing, radius } from '../theme';
-import { Surah } from '../services/quran-api';
+import { Surah } from '~api/quran-api';
 
 const MAX_AYAHS_MOBILE = 10;
 

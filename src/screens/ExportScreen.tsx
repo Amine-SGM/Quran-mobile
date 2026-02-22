@@ -13,7 +13,7 @@ import {
 import Share from 'react-native-share';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, commonStyles, spacing, radius } from '../theme';
-import { Surah, Reciter, getAudioUrlsForChapter, getVersesByChapter } from '../services/quran-api';
+import { Surah, Reciter, getAudioUrlsForChapter, getVersesByChapter } from '~api/quran-api';
 import { getCachedAudio } from '../services/audio-cache';
 import { renderVideo, buildOutputPath } from '../services/ffmpeg-service';
 import { SubtitleConfig } from './SubtitleConfigScreen';
@@ -126,7 +126,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 },
                 subtitles: subtitleConfig.enabled ? {
                     enabled: true,
-                    ayahs: ayahs.map((a, i) => ({
+                    ayahs: ayahs.map((a: any, i: number) => ({
                         arabicText: a.arabicText,
                         englishTranslation: a.englishTranslation,
                         audioFile: audioFiles[i],

@@ -13,14 +13,22 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "~api/*": ["src/api/*"],
+      "~types/*": ["src/types/*"],
+      "~utils/*": ["src/utils/*"],
+      "~theme/*": ["src/theme/*"],
+      "~screens/*": ["src/screens/*"],
+      "~components/*": ["src/components/*"],
+      "~services/*": ["src/services/*"]
+    }
   },
   "include": [
     "src/**/*"
   ],
   "exclude": [
     "node_modules",
-    "lib",
-    "../shared/src/utils/**/*"
+    "lib"
   ]
 }

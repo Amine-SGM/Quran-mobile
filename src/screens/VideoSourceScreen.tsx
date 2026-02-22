@@ -15,7 +15,7 @@ import {
 import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, commonStyles, spacing, radius } from '../theme';
-import { searchVideos, getBestVideoUrl, getAttribution } from '../../../shared/src/api/pexels-client';
+import { searchVideos, getBestVideoUrl, getAttribution, PexelsVideoHit } from '~api/pexels-client';
 import { downloadVideo } from '../services/video-cache';
 
 interface VideoSource {
@@ -33,7 +33,7 @@ interface VideoSourceScreenProps {
 export const VideoSourceScreen: React.FC<VideoSourceScreenProps> = ({ onSelectVideo, onBack }) => {
     const [activeTab, setActiveTab] = useState<'upload' | 'stock'>('upload');
     const [searchQuery, setSearchQuery] = useState('nature');
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<PexelsVideoHit[]>([]);
     const [searching, setSearching] = useState(false);
     const [downloading, setDownloading] = useState<string | null>(null);
     const [downloadProgress, setDownloadProgress] = useState(0);
@@ -73,7 +73,7 @@ export const VideoSourceScreen: React.FC<VideoSourceScreenProps> = ({ onSelectVi
         }
     };
 
-    const handleSelectStock = async (video: any) => {
+    const handleSelectStock = async (video: PexelsVideoHit) => {
         try {
             const videoUrl = getBestVideoUrl(video);
             if (!videoUrl) {

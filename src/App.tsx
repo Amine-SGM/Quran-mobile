@@ -12,7 +12,7 @@ import { ExportScreen } from './screens/ExportScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { colors } from './theme';
 import { cleanupOldCache } from './services/audio-cache';
-import { Surah, Reciter } from './services/quran-api';
+import { Surah, Reciter } from '~api/quran-api';
 
 interface VideoSource {
     type: 'upload' | 'stock';

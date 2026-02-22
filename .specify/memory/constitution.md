@@ -1,50 +1,47 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: 1.1.0 -> 1.1.1
+- List of modified principles:
+  - None (Refactoring phase initiated based on existing principles)
+- Added sections: None
+- Removed sections: None
+- Templates requiring updates: ✅ updated
+- Follow-up TODOs: Execute the codebase refactor to move shared directory contents into platform-specific directories (`mobile` and `desktop`) and update all imports accordingly, as requested by the user.
+-->
+# Quran Shorts Maker Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Unified Codebase (No Shared Directory)
+All application logic, APIs, and types MUST reside within their respective target platform directories (e.g., `mobile` or `desktop`). The use of a `shared` directory is strictly forbidden. Code must be structured independently within `mobile` or `desktop` to reduce cross-platform dependency complexity and simplify the build process.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Privacy-First & Serverless
+All processing, including video rendering and media generation, MUST happen securely on the user's device. Cloud backends are not permitted for media processing. Data remains with the user.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. TypeScript Strictness
+Strict mode TypeScript is mandatory across all codebases. The use of `any` is strictly forbidden except at explicit, unavoidable IPC boundaries. Strong typing must be utilized for all internal interfaces and API responses.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Functional UI Development
+All React components MUST be functional and utilize hooks. Class components are not allowed. Design tokens should be managed via CSS variables or localized styling solutions without relying on utility frameworks like Tailwind.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. High-Quality Processing & Exports
+The application MUST support comprehensive export capabilities including multiple aspect ratios (9:16, 1:1, 4:5, 16:9) and high resolutions (720p, 1080p, 2K, 4K). Arabic text shaping must be perfectly preserved in generated subtitles.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Technology Stack Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- **Languages:** TypeScript 5.x exclusively
+- **Frameworks:** React 18, React Native (Mobile), Electron (Desktop)
+- **Media Processing:** FFmpeg (native binary on desktop, ffmpeg-kit-https on mobile), Node.js canvas for Arabic text shaping
+- **APIs:** Pexels API (with user-provided keys, no hardcoded keys), Quran.com API v4
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Development efforts must respect platform-specific boundaries. Since shared code is prohibited, any logically equivalent functionality must be purposefully duplicated or implemented contextually per platform (Desktop vs. Mobile). Local testing must be performed via `npm test` before pushing changes.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This Constitution supersedes all prior architectural practices, specifically enforcing the deprecation of the `shared` directory. 
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+All pull requests and code reviews MUST verify compliance with the "No Shared Directory" principle and ensure that code remains strictly within its target project (`desktop` or `mobile`). Complexity must be justified.
+
+**Version**: 1.1.1 | **Ratified**: 2026-02-18 | **Last Amended**: 2026-02-22
