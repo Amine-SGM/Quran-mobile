@@ -25,12 +25,12 @@
 
 ## Phase 4: User Story 2 - Core Features & Navigation
 **Goal**: All navigation (Surah, Reciter, Export) is smooth, intuitive, and underlying data fetching functions correctly.
-- [ ] T010 [P] [US2] Overhaul visual hierarchy, spacing, and typography in `src/screens/SurahDetailScreen.tsx`
-- [ ] T011 [P] [US2] Overhaul visual hierarchy, spacing, and typography in `src/screens/ReciterScreen.tsx`
-- [ ] T012 [P] [US2] Redesign rendering progress display prominently in `src/screens/ExportScreen.tsx`
+- [x] T010 [P] [US2] Overhaul visual hierarchy, spacing, and typography in `src/screens/SurahDetailScreen.tsx`
+- [x] T011 [P] [US2] Overhaul visual hierarchy, spacing, and typography in `src/screens/ReciterScreen.tsx`
+- [x] T012 [P] [US2] Redesign rendering progress display prominently in `src/screens/ExportScreen.tsx`
 - [ ] T013 [US2] Verify and integrate relocated Quran.com and Pexels API clients across the redesigned screens
 - [ ] T014 [US2] Test and ensure local caching mechanisms (RNFS, AsyncStorage) function properly in the media fetching flows
-- [ ] T015 [US2] Validate FFmpeg-kit integration and rendering utilities using the newly migrated paths in `src/services/ffmpeg-service.ts` (or equivalent)
+- [] T015 [US2] Validate FFmpeg-kit integration and rendering utilities using the newly migrated paths in `src/services/ffmpeg-service.ts` (or equivalent)
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 **Goal**: Ensure performance criteria and test passing.
