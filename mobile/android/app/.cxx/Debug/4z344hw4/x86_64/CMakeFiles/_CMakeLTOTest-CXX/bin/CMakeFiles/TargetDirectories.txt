@@ -1,0 +1,4 @@
+D:/projects/quran shorts maker/mobile/android/app/.cxx/Debug/4z344hw4/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir
+D:/projects/quran shorts maker/mobile/android/app/.cxx/Debug/4z344hw4/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir
+D:/projects/quran shorts maker/mobile/android/app/.cxx/Debug/4z344hw4/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/edit_cache.dir
+D:/projects/quran shorts maker/mobile/android/app/.cxx/Debug/4z344hw4/x86_64/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/rebuild_cache.dir
