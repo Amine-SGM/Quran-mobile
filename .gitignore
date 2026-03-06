@@ -21,3 +21,7 @@ ios/
 *.aab
 *.keystore
 *.jks
+.opencode/
+.spectify/
+specs/
+prd.md

@@ -205,10 +205,8 @@ function buildSubtitlesFilter(
         `WrapStyle=1`,
     ].join(',');
 
-    // Escape commas in force_style value for FFmpeg filter syntax
+    // Escape commas in force_style so the FFmpeg filter parser doesn't treat them as filter separators
     const forceStyle = forceStyleRaw.replace(/,/g, '\\,');
-
-    // Note: When using FFmpegKit programmatically, escape special chars but don't use quotes
     return `subtitles=${escapedPath}:force_style=${forceStyle}`;
 }
 
@@ -270,13 +268,13 @@ export async function renderVideo(options: RenderOptions): Promise<string> {
         videoFilter = scaleFilter;
     }
 
-    // Build FFmpeg command - use mpeg4 software encoder (more compatible than mediacodec)
-    // Note: FFmpegKit executes directly without shell, so don't wrap filter in quotes
+    // Build FFmpeg command — use libx264 (H.264) which is widely compatible and avoids
+    // the codec/tag mismatch that occurs when mixing mpeg4 codec with avc1 tag.
     const cmd = [
         '-i', videoFile,
         '-f', 'concat', '-safe', '0', '-i', audioListPath,
         '-vf', videoFilter,
-        '-c:v', 'mpeg4', '-q:v', '5', '-tag:v', 'avc1',
+        '-c:v', 'libx264', '-crf', '23', '-preset', 'ultrafast',
         '-c:a', 'aac', '-b:a', '128k',
         '-map', '0:v:0', '-map', '1:a:0',
         '-shortest',
