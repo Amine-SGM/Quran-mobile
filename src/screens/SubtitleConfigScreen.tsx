@@ -23,6 +23,7 @@ export interface SubtitleConfig {
 
 const STORAGE_KEY = 'subtitleConfig';
 const RATIO_KEY = 'aspectRatio';
+const RESOLUTION_KEY = 'videoResolution';
 
 const DEFAULT_CONFIG: SubtitleConfig = {
     enabled: true,
@@ -34,13 +35,14 @@ const DEFAULT_CONFIG: SubtitleConfig = {
 };
 
 interface SubtitleConfigScreenProps {
-    onNext: (config: SubtitleConfig, aspectRatio: string) => void;
+    onNext: (config: SubtitleConfig, aspectRatio: string, resolution: string) => void;
     onBack: () => void;
 }
 
 export const SubtitleConfigScreen: React.FC<SubtitleConfigScreenProps> = ({ onNext, onBack }) => {
     const [config, setConfig] = useState<SubtitleConfig>(DEFAULT_CONFIG);
     const [aspectRatio, setAspectRatio] = useState('9:16');
+    const [resolution, setResolution] = useState('720p');
 
     useEffect(() => {
         (async () => {
@@ -49,6 +51,8 @@ export const SubtitleConfigScreen: React.FC<SubtitleConfigScreenProps> = ({ onNe
                 if (saved) setConfig(JSON.parse(saved));
                 const ratio = await AsyncStorage.getItem(RATIO_KEY);
                 if (ratio) setAspectRatio(ratio);
+                const res = await AsyncStorage.getItem(RESOLUTION_KEY);
+                if (res) setResolution(res);
             } catch { }
         })();
     }, []);
@@ -57,8 +61,9 @@ export const SubtitleConfigScreen: React.FC<SubtitleConfigScreenProps> = ({ onNe
         try {
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(config));
             await AsyncStorage.setItem(RATIO_KEY, aspectRatio);
+            await AsyncStorage.setItem(RESOLUTION_KEY, resolution);
         } catch { }
-        onNext(config, aspectRatio);
+        onNext(config, aspectRatio, resolution);
     };
 
     const colors_list: { value: SubtitleConfig['color']; label: string; swatch: string }[] = [
@@ -78,6 +83,11 @@ export const SubtitleConfigScreen: React.FC<SubtitleConfigScreenProps> = ({ onNe
         { value: '1:1', label: '1:1', desc: 'Square' },
         { value: '4:5', label: '4:5', desc: 'Portrait' },
         { value: '16:9', label: '16:9', desc: 'Wide' },
+    ];
+
+    const resolutions = [
+        { value: '720p', label: '720p', desc: 'Standard' },
+        { value: '1080p', label: '1080p', desc: 'HD' },
     ];
 
     return (
@@ -204,6 +214,23 @@ export const SubtitleConfigScreen: React.FC<SubtitleConfigScreenProps> = ({ onNe
                 </>
             )}
 
+            {/* Quality / Resolution */}
+            <Text style={commonStyles.sectionTitle}>Quality</Text>
+            <View style={styles.chipRow}>
+                {resolutions.map(r => (
+                    <TouchableOpacity
+                        key={r.value}
+                        style={[commonStyles.chip, resolution === r.value && commonStyles.chipActive, styles.ratioChip]}
+                        onPress={() => setResolution(r.value)}
+                    >
+                        <Text style={[commonStyles.chipText, resolution === r.value && commonStyles.chipTextActive, { fontWeight: '600', fontSize: 14 }]}>
+                            {r.label}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 2 }}>{r.desc}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
             {/* Aspect Ratio */}
             <Text style={commonStyles.sectionTitle}>Aspect Ratio</Text>
             <View style={styles.chipRow}>
@@ -222,7 +249,7 @@ export const SubtitleConfigScreen: React.FC<SubtitleConfigScreenProps> = ({ onNe
             </View>
 
             <TouchableOpacity style={[commonStyles.btnPrimary, { marginTop: spacing.lg }]} onPress={handleNext}>
-                <Text style={commonStyles.btnPrimaryText}>Next: Export Video →</Text>
+                <Text style={commonStyles.btnPrimaryText}>Next: Select Video →</Text>
             </TouchableOpacity>
         </ScrollView>
     );

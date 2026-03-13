@@ -48,13 +48,20 @@ export interface PexelsSearchResponse {
  * Search for videos on Pexels.
  * GET /search?query={keyword}&per_page=20
  * Authorization: {API_KEY}
+ *
+ * @param orientation - 'portrait' | 'landscape' | 'square' — filters by video orientation
+ * @param size        - 'large' (4K) | 'medium' (FHD) | 'small' (HD) — filters by minimum size
  */
 export async function searchVideos(
     apiKey: string,
     keyword: string,
-    perPage: number = 20
+    perPage: number = 20,
+    orientation?: 'portrait' | 'landscape' | 'square',
+    size?: 'large' | 'medium' | 'small',
 ): Promise<PexelsSearchResponse> {
-    const url = `${BASE_URL}/search?query=${encodeURIComponent(keyword)}&per_page=${perPage}`;
+    let url = `${BASE_URL}/search?query=${encodeURIComponent(keyword)}&per_page=${perPage}`;
+    if (orientation) url += `&orientation=${orientation}`;
+    if (size) url += `&size=${size}`;
     const response = await fetch(url, {
         headers: {
             Authorization: apiKey,

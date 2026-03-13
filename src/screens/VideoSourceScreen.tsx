@@ -15,7 +15,7 @@ import {
 import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, commonStyles, spacing, radius } from '../theme';
-import { searchVideos, getBestVideoUrl, getAttribution, PexelsVideoHit } from '~api/pexels-client';
+import { searchVideos, getBestVideoUrl, getAttribution, getVideoUrlForResolution, PexelsVideoHit } from '~api/pexels-client';
 import { downloadVideo } from '../services/video-cache';
 
 interface VideoSource {
@@ -28,9 +28,11 @@ interface VideoSource {
 interface VideoSourceScreenProps {
     onSelectVideo: (source: VideoSource) => void;
     onBack: () => void;
+    aspectRatio: string;
+    resolution: string;
 }
 
-export const VideoSourceScreen: React.FC<VideoSourceScreenProps> = ({ onSelectVideo, onBack }) => {
+export const VideoSourceScreen: React.FC<VideoSourceScreenProps> = ({ onSelectVideo, onBack, aspectRatio, resolution }) => {
     const [activeTab, setActiveTab] = useState<'upload' | 'stock'>('upload');
     const [searchQuery, setSearchQuery] = useState('nature');
     const [searchResults, setSearchResults] = useState<PexelsVideoHit[]>([]);
@@ -54,6 +56,21 @@ export const VideoSourceScreen: React.FC<VideoSourceScreenProps> = ({ onSelectVi
         }
     };
 
+    /** Map aspectRatio to Pexels orientation param */
+    const getPexelsOrientation = (): 'portrait' | 'landscape' | 'square' | undefined => {
+        if (aspectRatio === '9:16' || aspectRatio === '4:5') return 'portrait';
+        if (aspectRatio === '16:9') return 'landscape';
+        if (aspectRatio === '1:1') return 'square';
+        return undefined;
+    };
+
+    /** Map resolution to Pexels size param */
+    const getPexelsSize = (): 'large' | 'medium' | 'small' | undefined => {
+        if (resolution === '1080p') return 'large';
+        if (resolution === '720p') return 'medium';
+        return 'small';
+    };
+
     const handleSearch = async () => {
         if (!searchQuery.trim()) return;
         try {
@@ -64,7 +81,7 @@ export const VideoSourceScreen: React.FC<VideoSourceScreenProps> = ({ onSelectVi
                 setSearchError('Please add your Pexels API key in Settings first.');
                 return;
             }
-            const results = await searchVideos(apiKey, searchQuery, 20);
+            const results = await searchVideos(apiKey, searchQuery, 20, getPexelsOrientation(), getPexelsSize());
             setSearchResults(results.videos || []);
         } catch (err: any) {
             setSearchError('Search failed: ' + err.message);
@@ -75,7 +92,9 @@ export const VideoSourceScreen: React.FC<VideoSourceScreenProps> = ({ onSelectVi
 
     const handleSelectStock = async (video: PexelsVideoHit) => {
         try {
-            const videoUrl = getBestVideoUrl(video);
+            // Use resolution-matched URL — avoids unnecessary FFmpeg rescaling
+            const targetWidth = resolution === '1080p' ? 1080 : 720;
+            const videoUrl = getVideoUrlForResolution(video, targetWidth);
             if (!videoUrl) {
                 Alert.alert('Error', 'No downloadable video found.');
                 return;

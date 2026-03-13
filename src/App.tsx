@@ -25,13 +25,15 @@ export type RootStackParamList = {
     Home: undefined;
     SurahDetail: { surah: Surah };
     Reciter: { surah: Surah; ayahStart: number; ayahEnd: number };
-    VideoSource: { surah: Surah; ayahStart: number; ayahEnd: number; reciter: Reciter };
-    SubtitleConfig: {
+    SubtitleConfig: { surah: Surah; ayahStart: number; ayahEnd: number; reciter: Reciter };
+    VideoSource: {
         surah: Surah;
         ayahStart: number;
         ayahEnd: number;
         reciter: Reciter;
-        videoSource: VideoSource;
+        subtitleConfig: SubtitleConfig;
+        aspectRatio: string;
+        resolution: string;
     };
     Export: {
         surah: Surah;
@@ -41,6 +43,7 @@ export type RootStackParamList = {
         videoSource: VideoSource;
         subtitleConfig: SubtitleConfig;
         aspectRatio: string;
+        resolution: string;
     };
     Settings: undefined;
 };
@@ -117,11 +120,33 @@ export const App: React.FC = () => {
                     {({ navigation, route }) => (
                         <ReciterScreen
                             onSelectReciter={reciter =>
-                                navigation.navigate('VideoSource', {
+                                navigation.navigate('SubtitleConfig', {
                                     surah: route.params.surah,
                                     ayahStart: route.params.ayahStart,
                                     ayahEnd: route.params.ayahEnd,
                                     reciter,
+                                })
+                            }
+                            onBack={() => navigation.goBack()}
+                        />
+                    )}
+                </Stack.Screen>
+
+                <Stack.Screen
+                    name="SubtitleConfig"
+                    options={{ title: 'Style & Quality' }}
+                >
+                    {({ navigation, route }) => (
+                        <SubtitleConfigScreen
+                            onNext={(subtitleConfig, aspectRatio, resolution) =>
+                                navigation.navigate('VideoSource', {
+                                    surah: route.params.surah,
+                                    ayahStart: route.params.ayahStart,
+                                    ayahEnd: route.params.ayahEnd,
+                                    reciter: route.params.reciter,
+                                    subtitleConfig,
+                                    aspectRatio,
+                                    resolution,
                                 })
                             }
                             onBack={() => navigation.goBack()}
@@ -135,35 +160,18 @@ export const App: React.FC = () => {
                 >
                     {({ navigation, route }) => (
                         <VideoSourceScreen
+                            aspectRatio={route.params.aspectRatio}
+                            resolution={route.params.resolution}
                             onSelectVideo={videoSource =>
-                                navigation.navigate('SubtitleConfig', {
-                                    surah: route.params.surah,
-                                    ayahStart: route.params.ayahStart,
-                                    ayahEnd: route.params.ayahEnd,
-                                    reciter: route.params.reciter,
-                                    videoSource,
-                                })
-                            }
-                            onBack={() => navigation.goBack()}
-                        />
-                    )}
-                </Stack.Screen>
-
-                <Stack.Screen
-                    name="SubtitleConfig"
-                    options={{ title: 'Subtitle Style' }}
-                >
-                    {({ navigation, route }) => (
-                        <SubtitleConfigScreen
-                            onNext={(subtitleConfig, aspectRatio) =>
                                 navigation.navigate('Export', {
                                     surah: route.params.surah,
                                     ayahStart: route.params.ayahStart,
                                     ayahEnd: route.params.ayahEnd,
                                     reciter: route.params.reciter,
-                                    videoSource: route.params.videoSource,
-                                    subtitleConfig,
-                                    aspectRatio,
+                                    videoSource,
+                                    subtitleConfig: route.params.subtitleConfig,
+                                    aspectRatio: route.params.aspectRatio,
+                                    resolution: route.params.resolution,
                                 })
                             }
                             onBack={() => navigation.goBack()}
@@ -184,6 +192,7 @@ export const App: React.FC = () => {
                             videoSource={route.params.videoSource}
                             subtitleConfig={route.params.subtitleConfig}
                             aspectRatio={route.params.aspectRatio}
+                            resolution={route.params.resolution}
                             onBack={() => navigation.goBack()}
                             onHome={() => navigation.popToTop()}
                         />

@@ -11,7 +11,6 @@ import {
     StatusBar,
 } from 'react-native';
 import Share from 'react-native-share';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, radius, typography, accessibility } from '~theme/tokens';
 import { Surah, Reciter, getAudioUrlsForChapter, getVersesByChapter } from '~api/quran-api';
 import { getCachedAudio } from '../services/audio-cache';
@@ -32,6 +31,7 @@ interface ExportScreenProps {
     videoSource: VideoSource;
     subtitleConfig: SubtitleConfig;
     aspectRatio: string;
+    resolution: string;
     onBack: () => void;
     onHome: () => void;
 }
@@ -46,6 +46,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
     videoSource,
     subtitleConfig,
     aspectRatio,
+    resolution,
     onBack,
     onHome,
 }) => {
@@ -55,14 +56,6 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
     const [outputPath, setOutputPath] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const spinAnim = useRef(new Animated.Value(0)).current;
-
-    const resolution = useRef('1080p'); // Standardized luxury default
-
-    useEffect(() => {
-        AsyncStorage.getItem('mobileResolution').then(r => {
-            if (r) resolution.current = r;
-        });
-    }, []);
 
     useEffect(() => {
         if (status === 'downloading_audio' || status === 'rendering') {
@@ -117,7 +110,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 videoFile: videoSource.localPath,
                 outputPath: outPath,
                 aspectRatio,
-                resolution: resolution.current,
+                resolution,
                 onProgress: pct => {
                     const currentProgress = 30 + Math.round(pct * 0.7);
                     setProgress(currentProgress);
