@@ -1,0 +1,64 @@
+.video-preview {
+  display: flex;
+  gap: 16px;
+}
+
+.preview-thumbnail {
+  width: 80px;
+  height: 80px;
+  background: #1a1a2e;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.play-icon {
+  font-size: 24px;
+  color: #ffd700;
+}
+
+.duration-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #fff;
+}
+
+.preview-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-row .label {
+  font-size: 12px;
+  color: #888;
+}
+
+.preview-row .value {
+  font-size: 13px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.preview-row .filename {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}

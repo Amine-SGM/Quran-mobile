@@ -1,0 +1,112 @@
+.settings-screen {
+  min-height: 100vh;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-header {
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-header h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.loading-state {
+  padding: 40px 20px;
+  text-align: center;
+  color: #64748b;
+}
+
+.settings-content {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.settings-section {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.settings-section h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.resolution-options {
+  display: flex;
+  gap: 8px;
+}
+
+.resolution-option {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resolution-option:hover:not(:disabled) {
+  border-color: #c4b5fd;
+}
+
+.resolution-option.selected {
+  border-color: #6b46c1;
+  background: #f3e8ff;
+  color: #6b46c1;
+}
+
+.resolution-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.about-section {
+  text-align: center;
+}
+
+.about-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.app-version {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.app-description {
+  font-size: 13px;
+  color: #64748b;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}

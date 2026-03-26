@@ -1,0 +1,36 @@
+.ayah-card {
+  background: #0f0f1a;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #222;
+}
+
+.ayah-number {
+  display: inline-block;
+  background: #ffd700;
+  color: #000;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 24px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ayah-arabic {
+  font-size: 20px;
+  line-height: 1.8;
+  direction: rtl;
+  text-align: right;
+  margin: 8px 0;
+  color: #fff;
+}
+
+.ayah-translation {
+  font-size: 14px;
+  color: #888;
+  margin: 8px 0 0 0;
+  line-height: 1.5;
+}

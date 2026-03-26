@@ -1,0 +1,33 @@
+.audio-player {
+  padding: 8px 0;
+}
+
+.loading-text {
+  font-size: 12px;
+  color: #888;
+}
+
+.progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-bar {
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.time-display {
+  font-size: 11px;
+  color: #888;
+}

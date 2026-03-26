@@ -1,0 +1,61 @@
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.loading-spinner-small {
+  padding: 12px;
+}
+
+.loading-spinner-large {
+  padding: 48px;
+}
+
+.loading-spinner {
+  border: 3px solid #333;
+  border-top-color: #ffd700;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-spinner-small .loading-spinner {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+}
+
+.loading-spinner-container:not(.loading-spinner-small):not(.loading-spinner-large) .loading-spinner {
+  width: 40px;
+  height: 40px;
+}
+
+.loading-spinner-large .loading-spinner {
+  width: 56px;
+  height: 56px;
+  border-width: 4px;
+}
+
+.loading-spinner-message {
+  margin-top: 12px;
+  color: #888;
+  font-size: 14px;
+}
+
+.loading-spinner-small .loading-spinner-message {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.loading-spinner-large .loading-spinner-message {
+  font-size: 16px;
+  margin-top: 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

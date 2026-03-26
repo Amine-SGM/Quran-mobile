@@ -1,0 +1,170 @@
+.api-key-settings {
+  margin-bottom: 16px;
+}
+
+.api-key-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.api-key-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.api-key-status {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.api-key-status.set {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.api-key-status.not-set {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.api-key-description {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.api-key-description a {
+  color: #6b46c1;
+  text-decoration: none;
+}
+
+.api-key-description a:hover {
+  text-decoration: underline;
+}
+
+.api-key-manage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.api-key-masked {
+  font-size: 14px;
+  color: #64748b;
+  letter-spacing: 2px;
+}
+
+.change-key-button {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #6b46c1;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.change-key-button:hover {
+  background: #f3e8ff;
+  border-color: #c4b5fd;
+}
+
+.remove-key-button {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #ef4444;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remove-key-button:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.api-key-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input-group input {
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #6b46c1;
+}
+
+.input-group input:disabled {
+  opacity: 0.5;
+}
+
+.input-error {
+  font-size: 12px;
+  color: #ef4444;
+}
+
+.api-key-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.save-button {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  background: #6b46c1;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-button:hover:not(:disabled) {
+  background: #553c9a;
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #64748b;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cancel-button:hover {
+  background: #f8fafc;
+}

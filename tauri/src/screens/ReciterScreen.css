@@ -1,0 +1,108 @@
+.reciter-screen {
+  padding: 16px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  color: #ffffff;
+  padding-bottom: 100px;
+}
+
+.reciter-screen.loading,
+.reciter-screen.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.reciter-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.reciter-header h1 {
+  margin: 8px 0;
+  font-size: 24px;
+}
+
+.selection-info {
+  color: #888;
+  font-size: 14px;
+  margin: 0;
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  color: #ffd700;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px 0;
+  margin-bottom: 16px;
+}
+
+.back-button:hover {
+  opacity: 0.8;
+}
+
+.reciter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.preview-player {
+  position: fixed;
+  bottom: 80px;
+  left: 16px;
+  right: 16px;
+  padding: 16px;
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 12px;
+}
+
+.action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  background: #1a1a2e;
+  border-top: 1px solid #222;
+}
+
+.continue-button {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #000;
+}
+
+.continue-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.continue-button:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.spinner {
+  margin-top: 40px;
+  color: #888;
+}
+
+.error button {
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: #ffd700;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}

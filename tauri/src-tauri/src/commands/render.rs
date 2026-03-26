@@ -1,0 +1,163 @@
+use crate::services::ffmpeg::RenderConfig;
+use crate::services::render;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use tauri::{AppHandle, Manager};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VideoSource {
+    #[serde(rename = "type")]
+    pub source_type: String,
+    pub local_path: Option<String>,
+    pub stock_video_id: Option<u32>,
+    pub stock_video_url: Option<String>,
+    pub width: u32,
+    pub height: u32,
+    pub duration: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubtitleConfigInput {
+    pub enabled: bool,
+    pub font_size: u32,
+    pub color: String,
+    pub position: String,
+    pub show_translation: bool,
+    pub translation_font_size: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StartRenderParams {
+    pub surah_number: u32,
+    pub ayah_range_start: u32,
+    pub ayah_range_end: u32,
+    pub reciter_id: u32,
+    pub video_source: VideoSource,
+    pub subtitle_config: SubtitleConfigInput,
+    pub aspect_ratio: String,
+    pub resolution: String,
+    pub arabic_texts: Option<Vec<String>>,
+    pub translations: Option<Vec<Option<String>>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StartRenderResponse {
+    pub job_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JobStatusResponse {
+    pub id: String,
+    pub status: String,
+    pub progress: u32,
+    pub output_path: Option<String>,
+    pub error_message: Option<String>,
+}
+
+#[tauri::command]
+pub async fn start_render(
+    app: AppHandle,
+    params: StartRenderParams,
+) -> Result<StartRenderResponse, String> {
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
+
+    let output_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get data dir: {}", e))?;
+
+    std::fs::create_dir_all(&output_dir)
+        .map_err(|e| format!("Failed to create output dir: {}", e))?;
+
+    // Resolve video path
+    let video_path = if params.video_source.source_type == "upload" {
+        PathBuf::from(params.video_source.local_path.unwrap_or_default())
+    } else {
+        cache_dir.join(format!(
+            "pexels_{}.mp4",
+            params.video_source.stock_video_id.unwrap_or(0)
+        ))
+    };
+
+    let (width, height) = get_target_dimensions(&params.aspect_ratio, &params.resolution);
+
+    // Build a proper output path before creating the job
+    let job_id_preview = uuid::Uuid::new_v4().to_string();
+    let output_path = output_dir.join(format!("output_{}.mp4", job_id_preview));
+
+    // Resolve audio: download all ayahs for this reciter/surah range
+    // Audio files will be concatenated during the render phase
+    let audio_path = cache_dir.join(format!(
+        "audio_{}_{}_{}.mp3",
+        params.reciter_id, params.surah_number, params.ayah_range_start
+    ));
+
+    let config = RenderConfig {
+        surah_number: params.surah_number,
+        ayah_range_start: params.ayah_range_start,
+        ayah_range_end: params.ayah_range_end,
+        reciter_id: params.reciter_id,
+        surah_name: String::new(), // Will be populated in render service
+        audio_paths: vec![audio_path],
+        video_path,
+        output_path,
+        subtitle_path: None,
+        width,
+        height,
+        aspect_ratio: params.aspect_ratio,
+        subtitle_enabled: params.subtitle_config.enabled,
+        subtitle_font_size: params.subtitle_config.font_size,
+        subtitle_color: params.subtitle_config.color,
+        subtitle_position: params.subtitle_config.position,
+        show_translation: params.subtitle_config.show_translation,
+    };
+
+    let arabic_texts = params.arabic_texts.unwrap_or_default();
+    let translations = params.translations.unwrap_or_default();
+    let job_id = render::create_job_with_id(job_id_preview, config.clone());
+
+    let app_clone = app.clone();
+    let job_id_clone = job_id.clone();
+    tokio::spawn(async move {
+        let _ = render::start_render(app_clone, job_id_clone, arabic_texts, translations).await;
+    });
+
+    Ok(StartRenderResponse { job_id })
+}
+
+#[tauri::command]
+pub async fn get_job_status(job_id: String) -> Result<JobStatusResponse, String> {
+    let job = render::get_job(&job_id).ok_or("Job not found")?;
+
+    Ok(JobStatusResponse {
+        id: job.id,
+        status: job.status.to_string(),
+        progress: job.progress,
+        output_path: job.output_path.map(|p| p.to_string_lossy().to_string()),
+        error_message: job.error_message,
+    })
+}
+
+#[tauri::command]
+pub async fn cancel_job(job_id: String) -> Result<bool, String> {
+    Ok(render::cancel_job(&job_id))
+}
+
+fn get_target_dimensions(aspect_ratio: &str, resolution: &str) -> (u32, u32) {
+    let base_height: u32 = match resolution {
+        "720p" => 720,
+        "1080p" => 1080,
+        _ => 1080,
+    };
+
+    match aspect_ratio {
+        "9:16" => (base_height * 9 / 16, base_height),
+        "1:1" => (base_height, base_height),
+        "4:5" => (base_height * 4 / 5, base_height),
+        "16:9" => (base_height * 16 / 9, base_height),
+        _ => (base_height * 9 / 16, base_height),
+    }
+}

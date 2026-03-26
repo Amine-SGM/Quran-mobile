@@ -1,0 +1,43 @@
+.download-progress-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.download-progress-modal {
+  background: #1a1a2e;
+  border-radius: 16px;
+  padding: 24px;
+  min-width: 280px;
+  text-align: center;
+}
+
+.download-progress-modal h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  color: #ffd700;
+  font-size: 24px;
+  font-weight: 600;
+}
