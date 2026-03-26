@@ -135,7 +135,7 @@ export function ReciterScreen({
         </button>
         <h1>Select Reciter</h1>
         <p className="selection-info">
-          Surah {surahNumber}, Ayahs {ayahStart}-{ayahEnd}
+          <span className="surah-gradient">Surah {surahNumber}</span>, Ayahs {ayahStart}-{ayahEnd}
         </p>
       </header>
 

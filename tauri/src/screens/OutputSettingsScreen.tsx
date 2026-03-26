@@ -86,7 +86,7 @@ export function OutputSettingsScreen({
         </button>
         <h1>Video Configuration</h1>
         <p className="selection-info">
-          Surah {surahNumber}, Ayahs {ayahStart}-{ayahEnd} • Reciter: {reciterId}
+          <span className="surah-gradient">Surah {surahNumber}</span>, Ayahs {ayahStart}-{ayahEnd} • Reciter: {reciterId}
         </p>
       </header>
 

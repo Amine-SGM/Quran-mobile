@@ -225,18 +225,6 @@
   color: #fff;
 }
 
-.back-button {
-  background: transparent;
-  border: none;
-  color: #ffd700;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.back-button:hover {
-  opacity: 0.8;
-}
-
 .back-button:disabled {
   opacity: 0.3;
   cursor: not-allowed;

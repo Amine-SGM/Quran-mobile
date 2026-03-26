@@ -166,7 +166,7 @@ export function ExportScreen({
           <div className="summary-grid">
             <div className="summary-item">
               <span className="summary-label">Surah</span>
-              <span className="summary-value">{surah.englishName} ({surah.number})</span>
+              <span className="summary-value surah-gradient">{surah.englishName} ({surah.number})</span>
             </div>
             
             <div className="summary-item">

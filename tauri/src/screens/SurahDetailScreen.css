@@ -17,19 +17,6 @@
   margin-bottom: 24px;
 }
 
-.back-button {
-  background: transparent;
-  border: none;
-  color: #ffd700;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 8px 0;
-  margin-bottom: 16px;
-}
-
-.back-button:hover {
-  opacity: 0.8;
-}
 
 .surah-title {
   display: flex;
@@ -46,11 +33,19 @@
 .surah-title h2 {
   margin: 4px 0;
   font-size: 24px;
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .surah-title .surah-arabic {
   font-size: 32px;
   direction: rtl;
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .surah-meta {

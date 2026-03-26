@@ -110,8 +110,8 @@ export function HomeScreen({ onSurahSelect, onSettings, showError }: HomeScreenP
             onClick={() => onSurahSelect(surah)}
           >
             <span className="surah-number">{surah.number}</span>
-            <span className="surah-arabic">{surah.arabicName}</span>
-            <span className="surah-english">{surah.englishName}</span>
+            <div className="surah-arabic surah-gradient">{surah.arabicName}</div>
+            <div className="surah-english surah-gradient">{surah.englishName}</div>
             <span className="surah-info">
               {surah.totalAyahs} verses • {surah.revelationType}
             </span>

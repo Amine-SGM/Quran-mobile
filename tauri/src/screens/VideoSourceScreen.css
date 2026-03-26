@@ -22,19 +22,6 @@
   margin: 0;
 }
 
-.back-button {
-  background: transparent;
-  border: none;
-  color: #ffd700;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 8px 0;
-  margin-bottom: 16px;
-}
-
-.back-button:hover {
-  opacity: 0.8;
-}
 
 .source-options {
   margin-bottom: 24px;

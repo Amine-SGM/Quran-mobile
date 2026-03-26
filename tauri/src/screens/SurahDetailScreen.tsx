@@ -114,8 +114,8 @@ export function SurahDetailScreen({
         </button>
         <div className="surah-title">
           <span className="surah-number">{surah.number}</span>
-          <h2>{surah.englishName}</h2>
-          <span className="surah-arabic">{surah.arabicName}</span>
+          <h2 className="surah-gradient">{surah.englishName}</h2>
+          <span className="surah-arabic surah-gradient">{surah.arabicName}</span>
         </div>
         <p className="surah-meta">
           {surah.totalAyahs} verses • {surah.revelationType}
