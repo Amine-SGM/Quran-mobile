@@ -12,9 +12,11 @@ interface UseOutputSettingsReturn {
 export function useOutputSettings(
   initialSettings?: Partial<OutputSettings>
 ): UseOutputSettingsReturn {
-  const [settings, setSettings] = useState<OutputSettings>({
-    ...DEFAULT_OUTPUT_SETTINGS,
-    ...initialSettings,
+  const [settings, setSettings] = useState<OutputSettings>(() => {
+    const combined = { ...DEFAULT_OUTPUT_SETTINGS };
+    if (initialSettings?.aspectRatio) combined.aspectRatio = initialSettings.aspectRatio;
+    if (initialSettings?.resolution) combined.resolution = initialSettings.resolution;
+    return combined;
   });
 
   const setAspectRatio = useCallback((aspectRatio: AspectRatio) => {

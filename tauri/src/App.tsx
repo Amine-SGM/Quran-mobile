@@ -6,14 +6,13 @@ import { ReciterScreen } from "./screens/ReciterScreen";
 import { OutputSettingsScreen } from "./screens/OutputSettingsScreen";
 import { VideoSourceScreen } from "./screens/VideoSourceScreen";
 import { StockVideoScreen } from "./screens/StockVideoScreen";
-import { SubtitleConfigScreen } from "./screens/SubtitleConfigScreen";
 import { ExportScreen } from "./screens/ExportScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { ToastContainer } from "./components/Toast";
 import { useToast } from "./hooks/useToast";
 import "./App.css";
 
-type Screen = "home" | "surahDetail" | "reciter" | "outputSettings" | "videoSource" | "stockVideo" | "subtitleConfig" | "export" | "settings";
+type Screen = "home" | "surahDetail" | "reciter" | "outputSettings" | "videoSource" | "stockVideo" | "export" | "settings";
 
 interface NavigationState {
   screen: Screen;
@@ -119,7 +118,8 @@ function App() {
 
   const handleContinueToVideoSource = (
     aspectRatio: AspectRatio,
-    resolution: Resolution
+    resolution: Resolution,
+    subtitleConfig: SubtitleConfig
   ) => {
     if (!nav.selectedSurah || nav.selectedReciterId == null) return;
     setNav((prev) => ({
@@ -127,6 +127,7 @@ function App() {
       screen: "videoSource",
       aspectRatio,
       resolution,
+      subtitleConfig,
     }));
   };
 
@@ -138,29 +139,12 @@ function App() {
     }));
   };
 
-  const handleContinueToSubtitleConfig = (videoSource: VideoSource) => {
-    if (!nav.selectedSurah || nav.aspectRatio == null || nav.resolution == null) return;
-    setNav((prev) => ({
-      ...prev,
-      screen: "subtitleConfig",
-      videoSource,
-    }));
-  };
-
-  const handleBackFromSubtitleConfig = () => {
-    setNav((prev) => ({
-      ...prev,
-      screen: "videoSource",
-      subtitleConfig: null,
-    }));
-  };
-
-  const handleContinueToExport = (config: SubtitleConfig) => {
-    if (!nav.selectedSurah || nav.videoSource == null) return;
+  const handleContinueToExport = (videoSource: VideoSource) => {
+    if (!nav.selectedSurah || nav.aspectRatio == null || nav.resolution == null || nav.subtitleConfig == null) return;
     setNav((prev) => ({
       ...prev,
       screen: "export",
-      subtitleConfig: config,
+      videoSource,
     }));
   };
 
@@ -219,6 +203,9 @@ function App() {
           reciterId={nav.selectedReciterId!}
           onBack={handleBackToReciter}
           onContinue={handleContinueToVideoSource}
+          initialAspectRatio={nav.aspectRatio ?? undefined}
+          initialResolution={nav.resolution ?? undefined}
+          initialSubtitleConfig={nav.subtitleConfig ?? undefined}
         />
       )}
 
@@ -231,7 +218,7 @@ function App() {
           aspectRatio={nav.aspectRatio!}
           resolution={nav.resolution!}
           onBack={handleBackToOutputSettings}
-          onContinue={handleContinueToSubtitleConfig}
+          onContinue={handleContinueToExport}
           onStockVideo={handleStockVideo}
         />
       )}
@@ -245,19 +232,7 @@ function App() {
           aspectRatio={nav.aspectRatio!}
           resolution={nav.resolution!}
           onBack={handleBackToVideoSource}
-          onSelect={handleContinueToSubtitleConfig}
-        />
-      )}
-
-      {nav.screen === "subtitleConfig" && nav.selectedSurah && (
-        <SubtitleConfigScreen
-          surahNumber={nav.selectedSurah.number}
-          ayahStart={nav.ayahRangeStart!}
-          ayahEnd={nav.ayahRangeEnd!}
-          aspectRatio={nav.aspectRatio!}
-          resolution={nav.resolution!}
-          onBack={handleBackFromSubtitleConfig}
-          onContinue={handleContinueToExport}
+          onSelect={handleContinueToExport}
         />
       )}
 
@@ -272,7 +247,7 @@ function App() {
           subtitleConfig={nav.subtitleConfig!}
           aspectRatio={nav.aspectRatio!}
           resolution={nav.resolution!}
-          onBack={() => setNav((prev) => ({ ...prev, screen: "subtitleConfig" }))}
+          onBack={() => setNav((prev) => ({ ...prev, screen: "videoSource" }))}
           onStartOver={handleBackToHome}
           showSuccess={toast.showSuccess}
         />
