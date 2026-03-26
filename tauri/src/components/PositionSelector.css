@@ -7,9 +7,17 @@
   pointer-events: none;
 }
 
+.position-selector .picker-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #888;
+  margin-bottom: 12px;
+}
+
 .position-options {
   display: flex;
-  gap: 8px;
+  gap: 12px;
 }
 
 .position-option {
@@ -17,40 +25,39 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   padding: 12px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  background: white;
+  border: 1px solid #222;
+  border-radius: 12px;
+  background: #0f0f1a;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .position-option:hover:not(:disabled) {
-  border-color: #c4b5fd;
-  background: #faf5ff;
+  border-color: #ffd700;
 }
 
 .position-option.selected {
-  border-color: #6b46c1;
-  background: #f3e8ff;
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
 }
 
 .position-icon {
   font-size: 20px;
-  color: #64748b;
+  color: #666;
 }
 
 .position-option.selected .position-icon {
-  color: #6b46c1;
+  color: #ffd700;
 }
 
 .position-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: #fff;
 }
 
 .position-option.selected .position-label {
-  color: #6b46c1;
+  color: #ffd700;
 }
