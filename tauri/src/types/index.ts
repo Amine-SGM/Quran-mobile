@@ -110,7 +110,7 @@ export const DEFAULT_SUBTITLE_CONFIG: SubtitleConfig = {
   enabled: false,
   fontSize: 48,
   color: "white",
-  position: "bottom",
+  position: "middle",
   showTranslation: false,
   translationFontSize: 24,
 };

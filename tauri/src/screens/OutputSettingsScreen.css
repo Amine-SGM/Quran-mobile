@@ -148,17 +148,9 @@
   pointer-events: none;
 }
 
-.preview-subtitle.position-top {
-  top: 15%;
-}
-
 .preview-subtitle.position-middle {
   top: 50%;
   transform: translateY(-50%);
-}
-
-.preview-subtitle.position-bottom {
-  bottom: 15%;
 }
 
 .preview-surah-title {

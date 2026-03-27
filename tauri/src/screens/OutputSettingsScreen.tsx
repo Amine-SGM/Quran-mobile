@@ -5,7 +5,7 @@ import { ResolutionPicker } from "../components/ResolutionPicker";
 import { FontSizeSlider } from "../components/FontSizeSlider";
 import { ColorPicker } from "../components/ColorPicker";
 import { ToggleSwitch } from "../components/ToggleSwitch";
-import { PositionSelector } from "../components/PositionSelector";
+
 import type { AspectRatio, Resolution, SubtitleConfig } from "../types";
 import { VALIDATION, DEFAULT_SUBTITLE_CONFIG } from "../types";
 import "./OutputSettingsScreen.css";
@@ -48,8 +48,8 @@ export function OutputSettingsScreen({
   const [color, setColor] = useState<"white" | "yellow">(
     initialSubtitleConfig?.color ?? DEFAULT_SUBTITLE_CONFIG.color
   );
-  const [position, setPosition] = useState<"top" | "middle" | "bottom">(
-    initialSubtitleConfig?.position ?? DEFAULT_SUBTITLE_CONFIG.position
+  const [position] = useState<"top" | "middle" | "bottom">(
+    "middle"
   );
   const [showTranslation, setShowTranslation] = useState(
     initialSubtitleConfig?.showTranslation ?? DEFAULT_SUBTITLE_CONFIG.showTranslation
@@ -134,11 +134,7 @@ export function OutputSettingsScreen({
                 />
               </div>
 
-              <PositionSelector
-                label="Text Position"
-                value={position}
-                onChange={setPosition}
-              />
+
 
               <div className="option-group">
                 <ToggleSwitch
