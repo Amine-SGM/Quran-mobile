@@ -95,6 +95,30 @@ pub async fn start_render(
         params.reciter_id, params.surah_number, params.ayah_range_start
     ));
 
+    // Resolve calligraphy PNG path
+    // In production: bundled as resources/surahs/{:03}.png
+    // In dev: located at public/surahs/{:03}.png relative to the crate root
+    let surah_image_filename = format!("{:03}.png", params.surah_number);
+    let surah_image_path = {
+        // Try the bundled resource path first (production)
+        let resource_path = app
+            .path()
+            .resource_dir()
+            .ok()
+            .map(|d| d.join("surahs").join(&surah_image_filename));
+
+        // Fall back to the project's public/ directory (dev mode)
+        let dev_path = std::env::var("CARGO_MANIFEST_DIR")
+            .ok()
+            .map(|d| PathBuf::from(d).parent().unwrap_or(std::path::Path::new(".")).to_path_buf().join("public").join("surahs").join(&surah_image_filename));
+
+        match (resource_path, dev_path) {
+            (Some(p), _) if p.exists() => Some(p),
+            (_, Some(p)) if p.exists() => Some(p),
+            _ => None,
+        }
+    };
+
     let config = RenderConfig {
         surah_number: params.surah_number,
         ayah_range_start: params.ayah_range_start,
@@ -105,6 +129,7 @@ pub async fn start_render(
         video_path,
         output_path,
         subtitle_path: None,
+        surah_image_path,
         width,
         height,
         aspect_ratio: params.aspect_ratio,

@@ -13,6 +13,7 @@ pub struct RenderConfig {
     pub video_path: PathBuf,
     pub output_path: PathBuf,
     pub subtitle_path: Option<PathBuf>,
+    pub surah_image_path: Option<PathBuf>,
     pub width: u32,
     pub height: u32,
     pub aspect_ratio: String,
@@ -61,8 +62,19 @@ impl FFmpegService {
             args.push(audio.to_string_lossy().to_string());
         }
 
+        // ── Input: calligraphy PNG (if present) ───────────────
+        let has_calligraphy = config.surah_image_path
+            .as_ref()
+            .map(|p| p.exists())
+            .unwrap_or(false);
+
+        if has_calligraphy {
+            args.push("-i".into());
+            args.push(config.surah_image_path.as_ref().unwrap().to_string_lossy().to_string());
+        }
+
         // ── Build audio filters (concatenation) ───────────────
-        let mut filter_complex: Vec<String> = Vec::new();
+        let mut filter_parts: Vec<String> = Vec::new();
         let num_audio = config.audio_paths.len();
 
         let mut audio_concat = String::new();
@@ -70,7 +82,7 @@ impl FFmpegService {
             audio_concat.push_str(&format!("[{}:a]", i));
         }
         audio_concat.push_str(&format!("concat=n={}:v=0:a=1[outa]", num_audio));
-        filter_complex.push(audio_concat);
+        filter_parts.push(audio_concat);
 
         // ── Build video filters ───────────────────────────────
         let mut vf_parts: Vec<String> = Vec::new();
@@ -99,9 +111,34 @@ impl FFmpegService {
             }
         }
 
-        // Combine filter graphs
+        // ── Combine filter graphs ─────────────────────────────
+        if has_calligraphy {
+            // When we have a calligraphy image we need a two-stage filter:
+            // Stage 1: build the processed video as [base]
+            // Stage 2: scale calligraphy PNG and overlay it
+            let calligraphy_input_idx = 1 + num_audio; // 0=video, 1..N=audio, N+1=image
+            let h = config.height as f64;
+            let calligraphy_h = (h * 0.15).round() as u32;
+            let y_offset = (h * 0.05).round() as u32;
+
+            filter_parts.push(format!(
+                "[0:v]{}[base]",
+                vf_parts.join(",")
+            ));
+            filter_parts.push(format!(
+                "[{}:v]scale=-1:{}[logo]",
+                calligraphy_input_idx, calligraphy_h
+            ));
+            filter_parts.push(format!(
+                "[base][logo]overlay=x=(main_w-overlay_w)/2:y={}[outv]",
+                y_offset
+            ));
+        } else {
+            filter_parts.push(format!("[0:v]{}[outv]", vf_parts.join(",")));
+        }
+
         args.push("-filter_complex".into());
-        args.push(format!("{};[0:v]{}[outv]", filter_complex.join(";"), vf_parts.join(",")));
+        args.push(filter_parts.join(";"));
 
         // ── Stream mapping ────────────────────────────────────
         args.push("-map".into());

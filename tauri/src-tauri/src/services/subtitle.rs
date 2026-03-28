@@ -94,16 +94,6 @@ Style: Translation,Noto Sans Arabic,{},{},{},{},{},0,0,0,0,100,100,0,0,1,2,1,8,2
             ));
         }
 
-        // Surah style: Centered Top, Arabic font, large size, distinct outline/shadow
-        styles.push_str(&format!(
-            r#"
-Style: Surah,Noto Sans Arabic,44,{},{},{},{},1,0,0,0,100,100,0,0,1,2,2,8,20,20,50,1"#,
-            primary_color,
-            primary_color,
-            outline_color,
-            back_color
-        ));
-
         styles
     }
 
@@ -117,13 +107,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
         let total_duration = lines.last().map(|l| l.end_time).unwrap_or(3.0);
         let video_start = format_ass_time(0.0);
         let video_end = format_ass_time(total_duration);
-
-        // Add Surah Title at the top
-        events.push_str(&format!(
-            r#"
-Dialogue: 0,{},{},Surah,,0,0,0,,{}"#,
-            video_start, video_end, config.surah_name
-        ));
 
         let center_x = config.width / 2;
         let center_y = config.height / 2;
