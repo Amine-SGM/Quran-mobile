@@ -121,12 +121,12 @@ export const DEFAULT_SUBTITLE_CONFIG: SubtitleConfig = {
 
 export const DEFAULT_OUTPUT_SETTINGS: OutputSettings = {
   aspectRatio: "9:16",
-  resolution: "1080p",
+  resolution: "720p",
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   pexelsApiKey: null,
-  exportResolution: "1080p",
+  exportResolution: "720p",
   autoCleanup: true,
   showVideoPreview: true,
 };
@@ -140,7 +140,7 @@ export const VALIDATION = {
   },
   SUBTITLE: {
     FONT_SIZE_MIN: 24,
-    FONT_SIZE_MAX: 72,
+    FONT_SIZE_MAX: 48,
     TRANSLATION_FONT_SIZE_MIN: 12,
     TRANSLATION_FONT_SIZE_MAX: 36,
   },

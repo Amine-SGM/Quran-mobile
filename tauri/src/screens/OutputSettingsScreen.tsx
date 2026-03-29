@@ -138,13 +138,62 @@ export function OutputSettingsScreen({
                       onChange={setFontSize}
                     />
                   </div>
-                  <div style={{ width: '20%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '16px' }}>
-                    <input 
-                      type="color" 
-                      value={arabicColor} 
-                      onChange={(e) => setArabicColor(e.target.value)} 
-                      style={{ width: '100%', height: '40px', padding: '0', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} 
+                  <div style={{ width: '30%', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', marginTop: '-12px' }}>
+                    <button
+                      onClick={() => setArabicColor('#FFFFFF')}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        backgroundColor: '#FFFFFF',
+                        border: arabicColor === '#FFFFFF' ? '2px solid #D4AF37' : '2px solid rgba(255, 255, 255, 0.2)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        flexShrink: 0
+                      }}
+                      title="White"
                     />
+                    <div style={{
+                      position: 'relative',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: arabicColor !== '#FFFFFF' ? '2px solid #D4AF37' : '2px solid rgba(255, 255, 255, 0.2)',
+                      background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      flexShrink: 0
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        backgroundColor: arabicColor !== '#FFFFFF' ? arabicColor : 'transparent',
+                        pointerEvents: 'none',
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)'
+                      }} />
+                      <input 
+                        type="color" 
+                        value={arabicColor !== '#FFFFFF' ? arabicColor : '#ff0000'} 
+                        onChange={(e) => setArabicColor(e.target.value.toUpperCase())} 
+                        style={{ 
+                          position: 'absolute',
+                          top: '-10px',
+                          left: '-10px',
+                          width: '60px', 
+                          height: '60px', 
+                          padding: '0', 
+                          border: 'none', 
+                          cursor: 'pointer', 
+                          opacity: 0
+                        }} 
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -169,13 +218,62 @@ export function OutputSettingsScreen({
                         onChange={setTranslationFontSize}
                       />
                     </div>
-                    <div style={{ width: '20%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '16px' }}>
-                      <input 
-                        type="color" 
-                        value={translationColor} 
-                        onChange={(e) => setTranslationColor(e.target.value)} 
-                        style={{ width: '100%', height: '40px', padding: '0', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} 
+                    <div style={{ width: '30%', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', marginTop: '-12px' }}>
+                      <button
+                        onClick={() => setTranslationColor('#FFFFFF')}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          backgroundColor: '#FFFFFF',
+                          border: translationColor === '#FFFFFF' ? '2px solid #D4AF37' : '2px solid rgba(255, 255, 255, 0.2)',
+                          cursor: 'pointer',
+                          padding: 0,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                          flexShrink: 0
+                        }}
+                        title="White"
                       />
+                      <div style={{
+                        position: 'relative',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: translationColor !== '#FFFFFF' ? '2px solid #D4AF37' : '2px solid rgba(255, 255, 255, 0.2)',
+                        background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        flexShrink: 0
+                      }}>
+                        <div style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          backgroundColor: translationColor !== '#FFFFFF' ? translationColor : 'transparent',
+                          pointerEvents: 'none',
+                          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)'
+                        }} />
+                        <input 
+                          type="color" 
+                          value={translationColor !== '#FFFFFF' ? translationColor : '#ff0000'} 
+                          onChange={(e) => setTranslationColor(e.target.value.toUpperCase())} 
+                          style={{ 
+                            position: 'absolute',
+                            top: '-10px',
+                            left: '-10px',
+                            width: '60px', 
+                            height: '60px', 
+                            padding: '0', 
+                            border: 'none', 
+                            cursor: 'pointer', 
+                            opacity: 0
+                          }} 
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
