@@ -1,0 +1,45 @@
+warning: unused variable: `video_start`
+   --> src\services\subtitle.rs:108:13
+    |
+108 | ...et video_start = ...
+    |       ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_video_start`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `video_end`
+   --> src\services\subtitle.rs:109:13
+    |
+109 | ...et video_end = ...
+    |       ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_video_end`
+
+warning: field `ffprobe_path` is never read
+  --> src\services\ffmpeg.rs:29:5
+   |
+27 | pub struct FFmpegService {
+   |            ------------- field in this struct
+28 |     ffmpeg_path: String,
+29 |     ffprobe_path: String,
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `get_duration` is never used
+   --> src\services\ffmpeg.rs:178:12
+    |
+ 32 | impl FFmpegService {
+    | ------------------ method in this implementation
+...
+178 |     pub fn get_duration(&s...
+    |            ^^^^^^^^^^^^
+
+warning: method `estimate_line_durations` is never used
+   --> src\services\subtitle.rs:140:12
+    |
+ 26 | impl SubtitleService {
+    | -------------------- method in this implementation
+...
+140 |     pub fn estimate_line_durations(&s...
+    |            ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `tauri` (lib) generated 5 warnings (run `cargo fix --lib -p tauri` to apply 2 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.58s

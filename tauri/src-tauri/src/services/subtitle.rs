@@ -12,11 +12,13 @@ pub struct SubtitleLine {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubtitleRenderConfig {
     pub font_size: u32,
-    pub color: String,
+    pub arabic_color: String,
+    pub translation_color: String,
     pub position: String,
     pub show_translation: bool,
     pub translation_font_size: u32,
     pub surah_name: String,
+    pub custom_text: String,
     pub width: u32,
     pub height: u32,
 }
@@ -61,10 +63,9 @@ YCbCr Matrix: TV.709"#,
     }
 
     fn generate_ass_styles(&self, config: &SubtitleRenderConfig) -> String {
-        let primary_color = match config.color.as_str() {
-            "yellow" => "&H0000FFFF",
-            _ => "&H00FFFFFF",
-        };
+        let arabic_color = hex_to_ass_color(&config.arabic_color);
+        let translation_color = hex_to_ass_color(&config.translation_color);
+        let custom_text_color = "&H00FFFFFF";
 
         let outline_color = "&H00000000";
         let back_color = "&H80000000";
@@ -78,7 +79,7 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
         styles.push_str(&format!(
             r#"
 Style: Arabic,Noto Sans Arabic,{},{},{},{},{},1,0,0,0,100,100,0,0,1,2,1,2,20,20,0,1"#,
-            config.font_size, primary_color, primary_color, outline_color, back_color
+            config.font_size, arabic_color, arabic_color, outline_color, back_color
         ));
 
         // Translation style: Center-Top alignment for use with middle-centered positioning
@@ -87,8 +88,19 @@ Style: Arabic,Noto Sans Arabic,{},{},{},{},{},1,0,0,0,100,100,0,0,1,2,1,2,20,20,
                 r#"
 Style: Translation,Noto Sans Arabic,{},{},{},{},{},0,0,0,0,100,100,0,0,1,2,1,8,20,20,0,1"#,
                 config.translation_font_size,
-                primary_color,
-                primary_color,
+                translation_color,
+                translation_color,
+                outline_color,
+                back_color
+            ));
+        }
+
+        if !config.custom_text.is_empty() {
+            styles.push_str(&format!(
+                r#"
+Style: CustomText,Noto Sans Arabic,32,{},{},{},{},0,0,0,0,100,100,0,0,1,2,1,2,20,20,40,1"#,
+                custom_text_color,
+                custom_text_color,
                 outline_color,
                 back_color
             ));
@@ -107,6 +119,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
         let total_duration = lines.last().map(|l| l.end_time).unwrap_or(3.0);
         let video_start = format_ass_time(0.0);
         let video_end = format_ass_time(total_duration);
+
+        if !config.custom_text.is_empty() {
+            events.push_str(&format!(
+                r#"
+Dialogue: 0,{},{},CustomText,,0,0,0,,{}"#,
+                video_start, video_end, config.custom_text
+            ));
+        }
 
         let center_x = config.width / 2;
         let center_y = config.height / 2;
@@ -136,24 +156,6 @@ Dialogue: 0,{},{},Translation,,0,0,0,,{{\pos({}, {})}}{}"#,
 
         events
     }
-
-    pub fn estimate_line_durations(&self, texts: &[String], total_duration: f64) -> Vec<f64> {
-        if texts.is_empty() {
-            return vec![];
-        }
-
-        let avg_duration = total_duration / texts.len() as f64;
-
-        texts
-            .iter()
-            .map(|text| {
-                let word_count = text.split_whitespace().count() as f64;
-                let base_duration = avg_duration;
-                let duration = base_duration * (word_count / 5.0).clamp(0.8, 1.5);
-                duration.clamp(1.5, 8.0)
-            })
-            .collect()
-    }
 }
 
 impl Default for SubtitleService {
@@ -169,4 +171,18 @@ fn format_ass_time(seconds: f64) -> String {
     let centisecs = ((seconds * 100.0) % 100.0) as u32;
 
     format!("{}:{:02}:{:02}.{:02}", hours, minutes, secs, centisecs)
+}
+
+fn hex_to_ass_color(hex: &str) -> String {
+    if hex.len() == 7 && hex.starts_with("#") {
+        let r = &hex[1..3];
+        let g = &hex[3..5];
+        let b = &hex[5..7];
+        format!("&H00{}{}{}", b, g, r)
+    } else {
+        match hex {
+            "yellow" => "&H0000FFFF".to_string(),
+            _ => "&H00FFFFFF".to_string(),
+        }
+    }
 }

@@ -37,10 +37,12 @@ export interface VideoSource {
 export interface SubtitleConfig {
   enabled: boolean;
   fontSize: number;
-  color: "white" | "yellow";
+  arabicColor: string;
+  translationColor: string;
   position: "top" | "middle" | "bottom";
   showTranslation: boolean;
   translationFontSize: number;
+  customText: string;
 }
 
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
@@ -108,11 +110,13 @@ export interface SearchPexelsResponse {
 
 export const DEFAULT_SUBTITLE_CONFIG: SubtitleConfig = {
   enabled: false,
-  fontSize: 48,
-  color: "white",
+  fontSize: 32,
+  arabicColor: "#FFFFFF",
+  translationColor: "#FFFFFF",
   position: "middle",
   showTranslation: false,
   translationFontSize: 24,
+  customText: "",
 };
 
 export const DEFAULT_OUTPUT_SETTINGS: OutputSettings = {

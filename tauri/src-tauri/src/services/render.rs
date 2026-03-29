@@ -203,11 +203,13 @@ pub async fn start_render(
 
         let subtitle_config = SubtitleRenderConfig {
             font_size: config.subtitle_font_size,
-            color: config.subtitle_color.clone(),
+            arabic_color: config.arabic_color.clone(),
+            translation_color: config.translation_color.clone(),
             position: config.subtitle_position.clone(),
             show_translation: config.show_translation,
             translation_font_size: config.subtitle_font_size * 60 / 100,
             surah_name: config.surah_name.clone(),
+            custom_text: config.custom_text.clone(),
             width: config.width,
             height: config.height,
         };

@@ -19,9 +19,11 @@ pub struct RenderConfig {
     pub aspect_ratio: String,
     pub subtitle_enabled: bool,
     pub subtitle_font_size: u32,
-    pub subtitle_color: String,
+    pub arabic_color: String,
+    pub translation_color: String,
     pub subtitle_position: String,
     pub show_translation: bool,
+    pub custom_text: String,
 }
 
 pub struct FFmpegService {
@@ -176,6 +178,7 @@ impl FFmpegService {
     }
 
     pub fn get_duration(&self, path: &PathBuf) -> Result<f64, String> {
+        // First try ffprobe for accurate duration
         let output = Command::new(&self.ffprobe_path)
             .args([
                 "-v",
@@ -186,21 +189,29 @@ impl FFmpegService {
                 "default=noprint_wrappers=1:nokey=1",
                 &path.to_string_lossy(),
             ])
-            .output()
-            .map_err(|e| format!("FFprobe error: {}", e))?;
+            .output();
 
-        if !output.status.success() {
-            return Err(format!(
-                "FFprobe failed to get duration for: {}",
-                path.display()
-            ));
+        if let Ok(output) = output {
+            if output.status.success() {
+                let duration_str = String::from_utf8_lossy(&output.stdout);
+                if let Ok(duration) = duration_str.trim().parse::<f64>() {
+                    if duration > 0.0 {
+                        return Ok(duration);
+                    }
+                }
+            }
         }
 
-        let duration_str = String::from_utf8_lossy(&output.stdout);
-        duration_str
-            .trim()
-            .parse::<f64>()
-            .map_err(|e| format!("Parse duration error: {}", e))
+        // Fallback: estimate from file size (assumes ~128kbps MP3)
+        // This is a safety measure if ffprobe is missing or fails
+        let metadata = std::fs::metadata(path)
+            .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+
+        let file_size = metadata.len() as f64;
+        let avg_bitrate = 128_000.0;
+        let estimated_duration = (file_size * 8.0) / avg_bitrate;
+
+        Ok(estimated_duration.max(1.0))
     }
 
     pub fn execute(&self, args: Vec<String>) -> Result<(), String> {

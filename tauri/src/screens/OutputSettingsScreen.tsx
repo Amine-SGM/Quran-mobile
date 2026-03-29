@@ -3,7 +3,7 @@ import { useOutputSettings } from "../hooks/useOutputSettings";
 import { AspectRatioPicker } from "../components/AspectRatioPicker";
 import { ResolutionPicker } from "../components/ResolutionPicker";
 import { FontSizeSlider } from "../components/FontSizeSlider";
-import { ColorPicker } from "../components/ColorPicker";
+
 import { ToggleSwitch } from "../components/ToggleSwitch";
 
 import type { AspectRatio, Resolution, SubtitleConfig } from "../types";
@@ -45,8 +45,11 @@ export function OutputSettingsScreen({
   const [fontSize, setFontSize] = useState(
     initialSubtitleConfig?.fontSize ?? DEFAULT_SUBTITLE_CONFIG.fontSize
   );
-  const [color, setColor] = useState<"white" | "yellow">(
-    initialSubtitleConfig?.color ?? DEFAULT_SUBTITLE_CONFIG.color
+  const [arabicColor, setArabicColor] = useState<string>(
+    initialSubtitleConfig?.arabicColor ?? DEFAULT_SUBTITLE_CONFIG.arabicColor
+  );
+  const [translationColor, setTranslationColor] = useState<string>(
+    initialSubtitleConfig?.translationColor ?? DEFAULT_SUBTITLE_CONFIG.translationColor
   );
   const [position] = useState<"top" | "middle" | "bottom">(
     "middle"
@@ -56,6 +59,9 @@ export function OutputSettingsScreen({
   );
   const [translationFontSize, setTranslationFontSize] = useState(
     initialSubtitleConfig?.translationFontSize ?? DEFAULT_SUBTITLE_CONFIG.translationFontSize
+  );
+  const [customText, setCustomText] = useState(
+    initialSubtitleConfig?.customText ?? DEFAULT_SUBTITLE_CONFIG.customText
   );
 
   useEffect(() => {
@@ -68,10 +74,12 @@ export function OutputSettingsScreen({
     const config: SubtitleConfig = {
       enabled: subtitleEnabled,
       fontSize,
-      color,
+      arabicColor,
+      translationColor,
       position,
       showTranslation: subtitleEnabled && showTranslation,
       translationFontSize,
+      customText,
     };
     onContinue(settings.aspectRatio, settings.resolution, config);
   };
@@ -120,18 +128,25 @@ export function OutputSettingsScreen({
             <div className="subtitle-options">
               <div className="option-group">
                 <label className="picker-label">Arabic Text</label>
-                <FontSizeSlider
-                  label="Font Size"
-                  value={fontSize}
-                  min={VALIDATION.SUBTITLE.FONT_SIZE_MIN}
-                  max={VALIDATION.SUBTITLE.FONT_SIZE_MAX}
-                  onChange={setFontSize}
-                />
-                <ColorPicker
-                  label="Text Color"
-                  value={color}
-                  onChange={setColor}
-                />
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ width: '70%', flexShrink: 0 }}>
+                    <FontSizeSlider
+                      label="Font Size"
+                      value={fontSize}
+                      min={VALIDATION.SUBTITLE.FONT_SIZE_MIN}
+                      max={VALIDATION.SUBTITLE.FONT_SIZE_MAX}
+                      onChange={setFontSize}
+                    />
+                  </div>
+                  <div style={{ width: '20%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '16px' }}>
+                    <input 
+                      type="color" 
+                      value={arabicColor} 
+                      onChange={(e) => setArabicColor(e.target.value)} 
+                      style={{ width: '100%', height: '40px', padding: '0', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} 
+                    />
+                  </div>
+                </div>
               </div>
 
 
@@ -144,14 +159,45 @@ export function OutputSettingsScreen({
                 />
 
                 {showTranslation && (
-                  <FontSizeSlider
-                    label="Translation Size"
-                    value={translationFontSize}
-                    min={VALIDATION.SUBTITLE.TRANSLATION_FONT_SIZE_MIN}
-                    max={VALIDATION.SUBTITLE.TRANSLATION_FONT_SIZE_MAX}
-                    onChange={setTranslationFontSize}
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ width: '70%', flexShrink: 0 }}>
+                      <FontSizeSlider
+                        label="Translation Size"
+                        value={translationFontSize}
+                        min={VALIDATION.SUBTITLE.TRANSLATION_FONT_SIZE_MIN}
+                        max={VALIDATION.SUBTITLE.TRANSLATION_FONT_SIZE_MAX}
+                        onChange={setTranslationFontSize}
+                      />
+                    </div>
+                    <div style={{ width: '20%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '16px' }}>
+                      <input 
+                        type="color" 
+                        value={translationColor} 
+                        onChange={(e) => setTranslationColor(e.target.value)} 
+                        style={{ width: '100%', height: '40px', padding: '0', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }} 
+                      />
+                    </div>
+                  </div>
                 )}
+              </div>
+              
+              <div className="option-group" style={{ marginTop: '16px' }}>
+                <label className="picker-label">Custom Bottom Text</label>
+                <input
+                  type="text"
+                  value={customText}
+                  onChange={(e) => setCustomText(e.target.value)}
+                  placeholder="E.g. @QuranMobile"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #333',
+                    background: '#1A1A1A',
+                    color: '#FFF',
+                    fontSize: '14px',
+                  }}
+                />
               </div>
             </div>
           )}
@@ -171,16 +217,24 @@ export function OutputSettingsScreen({
                 <div className={`preview-subtitle position-${position}`}>
                   <span
                     className="preview-arabic"
-                    style={{ fontSize: `${Math.min(fontSize / 3, 24)}px`, color }}
+                    style={{ fontSize: `${Math.min(fontSize / 3, 24)}px`, color: arabicColor }}
                   >
                     بِسْمِ اللَّهِ
                   </span>
                   {showTranslation && (
                     <span
                       className="preview-translation"
-                      style={{ fontSize: `${Math.min(translationFontSize / 3, 12)}px`, color }}
+                      style={{ fontSize: `${Math.min(translationFontSize / 3, 12)}px`, color: translationColor }}
                     >
                       In the name of Allah
+                    </span>
+                  )}
+                  {customText && (
+                    <span
+                      className="preview-custom-text"
+                      style={{ fontSize: '10px', color: '#FFFFFF', position: 'absolute', bottom: '20px', left: '0', right: '0', textAlign: 'center' }}
+                    >
+                      {customText}
                     </span>
                   )}
                 </div>

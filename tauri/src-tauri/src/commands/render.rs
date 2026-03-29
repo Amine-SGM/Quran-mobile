@@ -20,10 +20,12 @@ pub struct VideoSource {
 pub struct SubtitleConfigInput {
     pub enabled: bool,
     pub font_size: u32,
-    pub color: String,
+    pub arabic_color: String,
+    pub translation_color: String,
     pub position: String,
     pub show_translation: bool,
     pub translation_font_size: u32,
+    pub custom_text: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -135,9 +137,11 @@ pub async fn start_render(
         aspect_ratio: params.aspect_ratio,
         subtitle_enabled: params.subtitle_config.enabled,
         subtitle_font_size: params.subtitle_config.font_size,
-        subtitle_color: params.subtitle_config.color,
+        arabic_color: params.subtitle_config.arabic_color,
+        translation_color: params.subtitle_config.translation_color,
         subtitle_position: params.subtitle_config.position,
         show_translation: params.subtitle_config.show_translation,
+        custom_text: params.subtitle_config.custom_text,
     };
 
     let arabic_texts = params.arabic_texts.unwrap_or_default();

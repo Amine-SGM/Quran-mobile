@@ -114,36 +114,6 @@ pub async fn get_audio_duration(file_path: String) -> Result<f64, String> {
 /// Estimate audio duration from file size.
 /// For precise duration, ffprobe should be used. This is a fallback.
 async fn get_audio_duration_internal(file_path: &PathBuf) -> Result<f64, String> {
-    // First try ffprobe for accurate duration
-    if let Ok(output) = std::process::Command::new("ffprobe")
-        .args([
-            "-v",
-            "quiet",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            &file_path.to_string_lossy(),
-        ])
-        .output()
-    {
-        if output.status.success() {
-            let duration_str = String::from_utf8_lossy(&output.stdout);
-            if let Ok(duration) = duration_str.trim().parse::<f64>() {
-                if duration > 0.0 {
-                    return Ok(duration);
-                }
-            }
-        }
-    }
-
-    // Fallback: estimate from file size (assumes ~128kbps MP3)
-    let metadata = std::fs::metadata(file_path)
-        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
-
-    let file_size = metadata.len() as f64;
-    let avg_bitrate = 128_000.0;
-    let estimated_duration = (file_size * 8.0) / avg_bitrate;
-
-    Ok(estimated_duration.max(1.0))
+    let ffmpeg = crate::services::ffmpeg::FFmpegService::new();
+    ffmpeg.get_duration(file_path)
 }

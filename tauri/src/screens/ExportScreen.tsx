@@ -125,10 +125,12 @@ export function ExportScreen({
           subtitle_config: {
             enabled: subtitleConfig.enabled,
             font_size: subtitleConfig.fontSize,
-            color: subtitleConfig.color,
+            arabic_color: subtitleConfig.arabicColor,
+            translation_color: subtitleConfig.translationColor,
             position: subtitleConfig.position,
             show_translation: subtitleConfig.showTranslation,
             translation_font_size: subtitleConfig.translationFontSize,
+            custom_text: subtitleConfig.customText,
           },
           aspect_ratio: aspectRatio,
           resolution: resolution,
@@ -190,7 +192,7 @@ export function ExportScreen({
               <span className="summary-label">Subtitles</span>
               <span className="summary-value">
                 {subtitleConfig.enabled 
-                  ? `${subtitleConfig.color}, ${subtitleConfig.position}${subtitleConfig.showTranslation ? " + translation" : ""}`
+                  ? `Colors (${subtitleConfig.arabicColor}, ${subtitleConfig.translationColor}), ${subtitleConfig.position}${subtitleConfig.showTranslation ? " + translation" : ""}`
                   : "Disabled"}
               </span>
             </div>
