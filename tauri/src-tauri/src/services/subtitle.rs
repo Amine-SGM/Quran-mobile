@@ -7,6 +7,7 @@ pub struct SubtitleLine {
     pub english_translation: Option<String>,
     pub start_time: f64,
     pub end_time: f64,
+    pub word_timings: Option<Vec<(f64, f64)>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -179,7 +180,8 @@ Dialogue: 0,{},{},Translation,,0,0,0,,{}"#,
     /// Splits a single subtitle line into multiple segments if the Arabic text is too long.
     /// This prevents overflows and makes for better reading pace.
     fn segment_line(&self, line: &SubtitleLine, config: &SubtitleRenderConfig) -> Vec<SubtitleLine> {
-        let arabic_words: Vec<&str> = line.arabic_text.split_whitespace().collect();
+        let clean_text = clean_arabic_text(&line.arabic_text);
+        let arabic_words: Vec<&str> = clean_text.split_whitespace().collect();
         let total_arabic_words = arabic_words.len();
         if total_arabic_words == 0 {
             return vec![line.clone()];
@@ -236,11 +238,49 @@ Dialogue: 0,{},{},Translation,,0,0,0,,{}"#,
                 None
             };
 
+            let (seg_start, seg_end) = if let Some(ref timings) = line.word_timings {
+                // Determine if we need to trim leading segments (e.g. Bismillah)
+                let actual_timings = if timings.len() > total_arabic_words {
+                    &timings[timings.len() - total_arabic_words..]
+                } else {
+                    timings
+                };
+
+                if actual_timings.len() == total_arabic_words {
+                    // ... (midpoint logic)
+                    let mut start = if i == 0 {
+                        let s = actual_timings[a_start].0;
+                        if (s - line.start_time).abs() < 0.5 { line.start_time } else { s }
+                    } else {
+                        let prev_end = actual_timings[a_start - 1].1;
+                        let curr_start = actual_timings[a_start].0;
+                        ((prev_end + curr_start) / 2.0) + 0.001
+                    };
+
+                    let end = if a_end < total_arabic_words {
+                        let curr_end = actual_timings[a_end - 1].1;
+                        let next_start = actual_timings[a_end].0;
+                        (curr_end + next_start) / 2.0
+                    } else {
+                        line.end_time
+                    };
+                    
+                    (start, end)
+                } else {
+                    #[cfg(test)]
+                    println!("FALLBACK: actual_timings.len()={}, total_arabic_words={}", actual_timings.len(), total_arabic_words);
+                    (line.start_time + (i as f64 * seg_duration), line.start_time + ((i + 1) as f64 * seg_duration))
+                }
+            } else {
+                (line.start_time + (i as f64 * seg_duration), line.start_time + ((i + 1) as f64 * seg_duration))
+            };
+
             segments.push(SubtitleLine {
-                arabic_text,
+                arabic_text: arabic_text,
                 english_translation,
-                start_time: line.start_time + (i as f64 * seg_duration),
-                end_time: line.start_time + ((i + 1) as f64 * seg_duration),
+                start_time: seg_start,
+                end_time: seg_end,
+                word_timings: None,
             });
         }
 
@@ -248,10 +288,107 @@ Dialogue: 0,{},{},Translation,,0,0,0,,{}"#,
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_segment_line_with_timings() {
+        let service = SubtitleService::new();
+        let config = SubtitleRenderConfig {
+            font_size: 32,
+            arabic_color: "#FFFFFF".to_string(),
+            translation_color: "#FFFFFF".to_string(),
+            position: "middle".to_string(),
+            show_translation: false,
+            translation_font_size: 24,
+            surah_name: "Test".to_string(),
+            custom_text: "".to_string(),
+            width: 1080,
+            height: 1920,
+        };
+
+        // 9 words, should split into 2 segments (default words_per_line is ~6)
+        let line = SubtitleLine {
+            arabic_text: "word1 word2 word3 word4 word5 word6 word7 word8 word9".to_string(),
+            english_translation: None,
+            start_time: 0.0,
+            end_time: 20.0,
+            word_timings: Some(vec![
+                (0.0, 1.0), (1.1, 2.0), (2.1, 3.0), (3.1, 4.0), (4.1, 5.0),
+                (11.0, 12.0), (12.1, 13.0), (13.1, 14.0), (14.1, 15.0),
+            ]),
+        };
+
+        let segments = service.segment_line(&line, &config);
+        assert_eq!(segments.len(), 2);
+
+        // Segment 1 (5 words)
+        assert_eq!(segments[0].arabic_text, "word1 word2 word3 word4 word5");
+        // Start time should be 0.0
+        assert_eq!(segments[0].start_time, 0.0);
+        // End time should be midpoint between word 5 (5.0) and word 6 (11.0)
+        // (5.0 + 11.0) / 2.0 = 8.0
+        assert_eq!(segments[0].end_time, 8.0);
+
+        // Segment 2 (4 words)
+        assert_eq!(segments[1].arabic_text, "word6 word7 word8 word9");
+        // Start time should be 8.0 + 0.001 = 8.001
+        assert_eq!(segments[1].start_time, 8.001);
+        assert_eq!(segments[1].end_time, 20.0);
+    }
+
+    #[test]
+    fn test_segment_line_with_leading_bismillah() {
+        let service = SubtitleService::new();
+        let config = SubtitleRenderConfig {
+            font_size: 32,
+            arabic_color: "#FFFFFF".to_string(),
+            translation_color: "#FFFFFF".to_string(),
+            position: "middle".to_string(),
+            show_translation: false,
+            translation_font_size: 24,
+            surah_name: "Test".to_string(),
+            custom_text: "".to_string(),
+            width: 1080,
+            height: 1920,
+        };
+
+        // 3 words text, but 7 segments in audio (4 for Bismillah, 3 for text)
+        let line = SubtitleLine {
+            arabic_text: "word1 word2 word3".to_string(),
+            english_translation: None,
+            start_time: 0.0,
+            end_time: 10.0,
+            word_timings: Some(vec![
+                (0.1, 0.5), (0.6, 1.0), (1.1, 1.5), (1.6, 2.0), // Bismillah
+                (5.0, 6.0), (6.1, 7.0), (7.1, 8.0),             // Verse words
+            ]),
+        };
+
+        // 3 words total, heuristic might not split it if words_per_line is large,
+        // but let's assume it doesn't split and just check timing of the single segment.
+        let segments = service.segment_line(&line, &config);
+        assert_eq!(segments.len(), 1);
+
+        assert_eq!(segments[0].arabic_text, "word1 word2 word3");
+        // Start time should be word1's start (5.0) because it's > 0.5s away from line.start_time (0.0)
+        assert_eq!(segments[0].start_time, 5.0); 
+        assert_eq!(segments[0].end_time, 10.0);
+    }
+}
+
 impl Default for SubtitleService {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn clean_arabic_text(text: &str) -> String {
+    // Remove Quranic pause marks and other symbols that are not usually spoken separate words
+    // Symbols to remove: ۖ, ۗ, ۚ, ۛ, ۜ, ۠, ۡ, ۦ, ۧ, ۨ, ۩, ۝
+    let markers = ['\u{06D6}', '\u{06D7}', '\u{06D8}', '\u{06D9}', '\u{06DA}', '\u{06DB}', '\u{06DC}', '\u{06DF}', '\u{06E0}', '\u{06E2}', '\u{06E5}', '\u{06E6}', '\u{06E7}', '\u{06E8}', '\u{06EA}', '\u{06EB}', '\u{06EC}', '\u{06DD}'];
+    text.chars().filter(|c| !markers.contains(c)).collect()
 }
 
 fn format_ass_time(seconds: f64) -> String {

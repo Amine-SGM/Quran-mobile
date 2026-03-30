@@ -6,6 +6,7 @@ use std::path::PathBuf;
 pub struct DownloadAudioResponse {
     pub cache_path: String,
     pub duration_seconds: f64,
+    pub word_timings: Option<Vec<(f64, f64)>>,
 }
 
 /// Download a single audio file for one ayah, fetching audio URLs internally.
@@ -33,26 +34,29 @@ pub async fn download_single_audio(
     let file_name = format!("audio_{}_{}_{}.mp3", reciter_id, surah_number, ayah_number);
     let file_path = cache_dir.join(&file_name);
 
-    // Return cached file if it already exists
-    if file_path.exists() {
-        let duration = get_audio_duration_internal(&file_path).await?;
-        return Ok(DownloadAudioResponse {
-            cache_path: file_path.to_string_lossy().to_string(),
-            duration_seconds: duration,
-        });
-    }
-
     let verse_key = format!("{}:{}", surah_number, ayah_number);
-    let audio_url = audio_entries
+    let entry = audio_entries
         .iter()
         .find(|e| e.verse_key == verse_key)
-        .map(|e| e.url.clone())
         .ok_or_else(|| {
             format!(
                 "Audio URL not found for verse {} (reciter {})",
                 verse_key, reciter_id
             )
         })?;
+
+    let audio_url = entry.url.clone();
+    let word_timings = entry.segments.clone();
+
+    // Return cached file if it already exists
+    if file_path.exists() {
+        let duration = get_audio_duration_internal(&file_path).await?;
+        return Ok(DownloadAudioResponse {
+            cache_path: file_path.to_string_lossy().to_string(),
+            duration_seconds: duration,
+            word_timings,
+        });
+    }
 
     // Download the audio file
     let client = reqwest::Client::new();
@@ -83,6 +87,7 @@ pub async fn download_single_audio(
     Ok(DownloadAudioResponse {
         cache_path: file_path.to_string_lossy().to_string(),
         duration_seconds: duration,
+        word_timings,
     })
 }
 

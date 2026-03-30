@@ -192,12 +192,25 @@ pub async fn start_render(
 
         for (i, text) in final_arabic.iter().enumerate() {
             let duration = durations.get(i).copied().unwrap_or(3.0);
+            let result = audio_results.get(i);
+            
+            let word_timings = result.and_then(|r| r.word_timings.clone())
+                .map(|timings| {
+                    // Shift timings by current_time so they are relative to the video start
+                    timings.into_iter()
+                        .map(|(s, e)| (s + current_time, e + current_time))
+                        .collect()
+                });
+
             lines.push(crate::services::subtitle::SubtitleLine {
                 arabic_text: text.clone(),
                 english_translation: final_translations.get(i).and_then(|t| t.clone()),
                 start_time: current_time,
                 end_time: current_time + duration,
+                word_timings,
             });
+
+            // Update current_time for next ayah
             current_time += duration;
         }
 

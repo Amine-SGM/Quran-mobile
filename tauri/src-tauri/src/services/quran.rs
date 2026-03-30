@@ -34,6 +34,7 @@ pub struct Reciter {
 pub struct AudioFileEntry {
     pub verse_key: String,
     pub url: String,
+    pub segments: Option<Vec<(f64, f64)>>,
 }
 
 // ── Private API response types ────────────────────────────────────
@@ -97,6 +98,7 @@ struct AudioFilesApiResponse {
 struct AudioFileData {
     verse_key: String,
     url: String,
+    segments: Option<Vec<Vec<u32>>>,
 }
 
 // ── HTTP helper ───────────────────────────────────────────────────
@@ -252,7 +254,7 @@ pub async fn fetch_audio_urls(
     chapter_number: u32,
 ) -> Result<Vec<AudioFileEntry>, String> {
     let url = format!(
-        "{}/recitations/{}/by_chapter/{}?per_page=300",
+        "{}/recitations/{}/by_chapter/{}?per_page=300&segments=true",
         QURAN_API_BASE, reciter_id, chapter_number
     );
     let data: AudioFilesApiResponse = api_get(&url).await?;
@@ -262,9 +264,17 @@ pub async fn fetch_audio_urls(
         .into_iter()
         .map(|af| {
             let full_url = normalise_audio_url(&af.url);
+            let segments = af.segments.map(|segs| {
+                segs.into_iter()
+                    .filter(|s| s.len() >= 3)
+                    .map(|s| (s[1] as f64 / 1000.0, s[2] as f64 / 1000.0))
+                    .collect()
+            });
+
             AudioFileEntry {
                 verse_key: af.verse_key,
                 url: full_url,
+                segments,
             }
         })
         .collect();
