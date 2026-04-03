@@ -63,6 +63,9 @@ export function OutputSettingsScreen({
   const [customText, setCustomText] = useState(
     initialSubtitleConfig?.customText ?? DEFAULT_SUBTITLE_CONFIG.customText
   );
+  const [highlightColor, setHighlightColor] = useState(
+    initialSubtitleConfig?.highlightColor ?? DEFAULT_SUBTITLE_CONFIG.highlightColor
+  );
 
   useEffect(() => {
     if (!subtitleEnabled) {
@@ -80,6 +83,7 @@ export function OutputSettingsScreen({
       showTranslation: subtitleEnabled && showTranslation,
       translationFontSize,
       customText,
+      highlightColor,
     };
     onContinue(settings.aspectRatio, settings.resolution, config);
   };
@@ -192,6 +196,74 @@ export function OutputSettingsScreen({
                           cursor: 'pointer', 
                           opacity: 0
                         }} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="option-group">
+                <label className="picker-label">Word Highlight</label>
+                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div style={{ width: '70%', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0' }}>
+                      <span style={{ fontSize: '14px', color: highlightColor, fontWeight: 600 }}>بِسْمِ</span>
+                      <span style={{ fontSize: '12px', color: '#888' }}>preview</span>
+                    </div>
+                  </div>
+                  <div style={{ width: '30%', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', marginTop: '-12px' }}>
+                    <button
+                      onClick={() => setHighlightColor('#FFD700')}
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        backgroundColor: '#FFD700',
+                        border: highlightColor === '#FFD700' ? '2px solid #D4AF37' : '2px solid rgba(255, 255, 255, 0.2)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        flexShrink: 0
+                      }}
+                      title="Gold"
+                    />
+                    <div style={{
+                      position: 'relative',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      border: highlightColor !== '#FFD700' ? '2px solid #D4AF37' : '2px solid rgba(255, 255, 255, 0.2)',
+                      background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      flexShrink: 0
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        backgroundColor: highlightColor !== '#FFD700' ? highlightColor : 'transparent',
+                        pointerEvents: 'none',
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)'
+                      }} />
+                      <input
+                        type="color"
+                        value={highlightColor !== '#FFD700' ? highlightColor : '#ff0000'}
+                        onChange={(e) => setHighlightColor(e.target.value.toUpperCase())}
+                        style={{
+                          position: 'absolute',
+                          top: '-10px',
+                          left: '-10px',
+                          width: '60px',
+                          height: '60px',
+                          padding: '0',
+                          border: 'none',
+                          cursor: 'pointer',
+                          opacity: 0
+                        }}
                       />
                     </div>
                   </div>

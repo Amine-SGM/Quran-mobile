@@ -177,6 +177,22 @@ pub async fn start_render(
         }
     };
 
+    let chapter_word_timings = match quran::fetch_chapter_word_timings(
+        config.reciter_id,
+        config.surah_number,
+    )
+    .await
+    {
+        Ok(timings) => timings,
+        Err(error) => {
+            eprintln!(
+                "[Subtitles] Failed to fetch chapter timings for reciter {} surah {}: {}",
+                config.reciter_id, config.surah_number, error
+            );
+            HashMap::new()
+        }
+    };
+
     config.audio_paths = audio_results.iter().map(|r| PathBuf::from(&r.cache_path)).collect();
 
     // ── Step 3: Generate subtitles if enabled ─────────────────
@@ -193,8 +209,15 @@ pub async fn start_render(
         for (i, text) in final_arabic.iter().enumerate() {
             let duration = durations.get(i).copied().unwrap_or(3.0);
             let result = audio_results.get(i);
+            let verse_number = config.ayah_range_start + i as u32;
+            let verse_key = format!("{}:{}", config.surah_number, verse_number);
             
-            let word_timings = result.and_then(|r| r.word_timings.clone())
+            let raw_word_timings = chapter_word_timings
+                .get(&verse_key)
+                .cloned()
+                .or_else(|| result.and_then(|r| r.word_timings.clone()));
+
+            let word_timings = raw_word_timings
                 .map(|timings| {
                     // Shift timings by current_time so they are relative to the video start
                     timings.into_iter()
@@ -225,6 +248,7 @@ pub async fn start_render(
             custom_text: config.custom_text.clone(),
             width: config.width,
             height: config.height,
+            highlight_color: config.highlight_color.clone(),
         };
 
         let ass_dir = output_path.parent().unwrap_or(std::path::Path::new("."));

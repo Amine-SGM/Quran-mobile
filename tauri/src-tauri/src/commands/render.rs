@@ -26,6 +26,7 @@ pub struct SubtitleConfigInput {
     pub show_translation: bool,
     pub translation_font_size: u32,
     pub custom_text: String,
+    pub highlight_color: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,6 +143,7 @@ pub async fn start_render(
         subtitle_position: params.subtitle_config.position,
         show_translation: params.subtitle_config.show_translation,
         custom_text: params.subtitle_config.custom_text,
+        highlight_color: params.subtitle_config.highlight_color,
     };
 
     let arabic_texts = params.arabic_texts.unwrap_or_default();

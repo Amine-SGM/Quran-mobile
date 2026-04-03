@@ -43,6 +43,7 @@ export interface SubtitleConfig {
   showTranslation: boolean;
   translationFontSize: number;
   customText: string;
+  highlightColor: string;
 }
 
 export type JobStatus = "queued" | "processing" | "completed" | "failed";
@@ -117,6 +118,7 @@ export const DEFAULT_SUBTITLE_CONFIG: SubtitleConfig = {
   showTranslation: false,
   translationFontSize: 24,
   customText: "",
+  highlightColor: "#FFD700",
 };
 
 export const DEFAULT_OUTPUT_SETTINGS: OutputSettings = {

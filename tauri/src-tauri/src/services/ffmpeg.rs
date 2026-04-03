@@ -24,6 +24,7 @@ pub struct RenderConfig {
     pub subtitle_position: String,
     pub show_translation: bool,
     pub custom_text: String,
+    pub highlight_color: String,
 }
 
 pub struct FFmpegService {
@@ -65,14 +66,22 @@ impl FFmpegService {
         }
 
         // ── Input: calligraphy PNG (if present) ───────────────
-        let has_calligraphy = config.surah_image_path
+        let has_calligraphy = config
+            .surah_image_path
             .as_ref()
             .map(|p| p.exists())
             .unwrap_or(false);
 
         if has_calligraphy {
             args.push("-i".into());
-            args.push(config.surah_image_path.as_ref().unwrap().to_string_lossy().to_string());
+            args.push(
+                config
+                    .surah_image_path
+                    .as_ref()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string(),
+            );
         }
 
         // ── Build audio filters (concatenation) ───────────────
@@ -102,8 +111,14 @@ impl FFmpegService {
         // Subtitle overlay
         if config.subtitle_enabled {
             if let Some(ref subtitle_path) = config.subtitle_path {
-                let ext = subtitle_path.extension().and_then(|e| e.to_str()).unwrap_or("");
-                let path_escaped = subtitle_path.to_string_lossy().replace('\\', "/").replace(':', "\\:");
+                let ext = subtitle_path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("");
+                let path_escaped = subtitle_path
+                    .to_string_lossy()
+                    .replace('\\', "/")
+                    .replace(':', "\\:");
 
                 if ext == "ass" || ext == "ssa" {
                     vf_parts.push(format!("ass='{}'", path_escaped));
@@ -123,10 +138,7 @@ impl FFmpegService {
             let calligraphy_h = (h * 0.15).round() as u32;
             let y_offset = (h * 0.05).round() as u32;
 
-            filter_parts.push(format!(
-                "[0:v]{}[base]",
-                vf_parts.join(",")
-            ));
+            filter_parts.push(format!("[0:v]{}[base]", vf_parts.join(",")));
             filter_parts.push(format!(
                 "[{}:v]scale=-1:{}[logo]",
                 calligraphy_input_idx, calligraphy_h
@@ -204,8 +216,8 @@ impl FFmpegService {
 
         // Fallback: estimate from file size (assumes ~128kbps MP3)
         // This is a safety measure if ffprobe is missing or fails
-        let metadata = std::fs::metadata(path)
-            .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+        let metadata =
+            std::fs::metadata(path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
 
         let file_size = metadata.len() as f64;
         let avg_bitrate = 128_000.0;
@@ -215,11 +227,7 @@ impl FFmpegService {
     }
 
     pub fn execute(&self, args: Vec<String>) -> Result<(), String> {
-        eprintln!(
-            "[FFmpeg] Running: {} {}",
-            self.ffmpeg_path,
-            args.join(" ")
-        );
+        eprintln!("[FFmpeg] Running: {} {}", self.ffmpeg_path, args.join(" "));
 
         let output = Command::new(&self.ffmpeg_path)
             .args(&args)

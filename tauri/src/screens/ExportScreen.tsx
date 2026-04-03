@@ -131,6 +131,7 @@ export function ExportScreen({
             show_translation: subtitleConfig.showTranslation,
             translation_font_size: subtitleConfig.translationFontSize,
             custom_text: subtitleConfig.customText,
+            highlight_color: subtitleConfig.highlightColor,
           },
           aspect_ratio: aspectRatio,
           resolution: resolution,

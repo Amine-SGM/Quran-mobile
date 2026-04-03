@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 const QURAN_API_BASE: &str = "https://api.quran.com/api/v4";
 
@@ -92,6 +93,23 @@ struct RecitationData {
 #[derive(Debug, Deserialize)]
 struct AudioFilesApiResponse {
     audio_files: Vec<AudioFileData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChapterRecitationApiResponse {
+    audio_file: ChapterAudioFileData,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChapterAudioFileData {
+    timestamps: Vec<ChapterTimestampData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ChapterTimestampData {
+    verse_key: String,
+    timestamp_from: f64,
+    segments: Option<Vec<Vec<f64>>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -282,6 +300,22 @@ pub async fn fetch_audio_urls(
     Ok(entries)
 }
 
+/// Fetch per-verse word timings from the chapter_recitations endpoint.
+/// This endpoint returns a single chapter-level audio file with verse timestamps,
+/// so we normalize each verse's segment times relative to that verse start.
+pub async fn fetch_chapter_word_timings(
+    reciter_id: u32,
+    chapter_number: u32,
+) -> Result<HashMap<String, Vec<(f64, f64)>>, String> {
+    let url = format!(
+        "{}/chapter_recitations/{}/{}?segments=true",
+        QURAN_API_BASE, reciter_id, chapter_number
+    );
+    let data: ChapterRecitationApiResponse = api_get(&url).await?;
+
+    Ok(convert_chapter_timestamps(data.audio_file.timestamps))
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 /// Strip simple HTML tags from translation text.
@@ -310,5 +344,81 @@ fn normalise_audio_url(raw: &str) -> String {
         raw.to_string()
     } else {
         format!("https://verses.quran.com/{}", raw)
+    }
+}
+
+fn convert_chapter_timestamps(
+    timestamps: Vec<ChapterTimestampData>,
+) -> HashMap<String, Vec<(f64, f64)>> {
+    timestamps
+        .into_iter()
+        .filter_map(|timestamp| {
+            let segments = timestamp.segments?;
+
+            let timings: Vec<(f64, f64)> = segments
+                .into_iter()
+                .filter(|segment| segment.len() >= 3)
+                .filter_map(|segment| {
+                    let start = ((segment[1] - timestamp.timestamp_from).max(0.0)) / 1000.0;
+                    let end = ((segment[2] - timestamp.timestamp_from).max(0.0)) / 1000.0;
+
+                    if end > start {
+                        Some((start, end))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            if timings.is_empty() {
+                None
+            } else {
+                Some((timestamp.verse_key, timings))
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converts_chapter_timestamps_to_relative_timings() {
+        let timings = convert_chapter_timestamps(vec![ChapterTimestampData {
+            verse_key: "1:2".to_string(),
+            timestamp_from: 6090.0,
+            segments: Some(vec![
+                vec![1.0, 6025.0, 7025.0],
+                vec![2.0, 7025.0, 7885.0],
+                vec![3.0, 7885.0, 8515.0],
+            ]),
+        }]);
+
+        let verse_timings = timings.get("1:2").expect("missing verse timings");
+        assert_eq!(verse_timings.len(), 3);
+        assert!((verse_timings[0].0 - 0.0).abs() < 1e-6);
+        assert!((verse_timings[0].1 - 0.935).abs() < 1e-6);
+        assert!((verse_timings[1].0 - 0.935).abs() < 1e-6);
+        assert!((verse_timings[1].1 - 1.795).abs() < 1e-6);
+    }
+
+    #[test]
+    fn ignores_malformed_segments_from_chapter_timestamps() {
+        let timings = convert_chapter_timestamps(vec![ChapterTimestampData {
+            verse_key: "1:3".to_string(),
+            timestamp_from: 11680.0,
+            segments: Some(vec![
+                vec![1.0, 11615.0, 12855.0],
+                vec![1.0],
+                vec![2.0, 12855.0, 16180.0],
+                vec![2.0],
+            ]),
+        }]);
+
+        let verse_timings = timings.get("1:3").expect("missing verse timings");
+        assert_eq!(verse_timings.len(), 2);
+        assert!((verse_timings[0].0 - 0.0).abs() < 1e-6);
+        assert!((verse_timings[1].0 - 1.175).abs() < 1e-6);
     }
 }
