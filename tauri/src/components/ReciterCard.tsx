@@ -23,7 +23,6 @@ export function ReciterCard({
     >
       <div className="reciter-info">
         <span className="reciter-name">{reciter.name}</span>
-        <span className="reciter-arabic">{reciter.arabicName}</span>
         {reciter.style && (
           <span className="reciter-style">{reciter.style}</span>
         )}

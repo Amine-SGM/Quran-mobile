@@ -75,16 +75,25 @@
   width: 100%;
   padding: 14px;
   background: linear-gradient(90deg, #ffd700, #ff8c00);
-  border: none;
+  border: 1px solid #ff8c00;
   border-radius: 12px;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  color: #000;
+  color: #1a1a2e;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(255, 140, 0, 0.15);
 }
 
 .submit-button:hover {
-  opacity: 0.9;
+  background: linear-gradient(90deg, #ffeb3b, #ffa726);
+  border-color: #ffa726;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 215, 0, 0.25);
+}
+
+.submit-button:active {
+  transform: translateY(0);
 }
 
 .privacy-note {
