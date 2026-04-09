@@ -144,6 +144,8 @@ pub async fn start_render(
         show_translation: params.subtitle_config.show_translation,
         custom_text: params.subtitle_config.custom_text,
         highlight_color: params.subtitle_config.highlight_color,
+        input_width: None,
+        input_height: None,
     };
 
     let arabic_texts = params.arabic_texts.unwrap_or_default();

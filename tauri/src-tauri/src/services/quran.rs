@@ -181,8 +181,7 @@ pub async fn fetch_surahs() -> Result<Vec<Surah>, String> {
     Ok(surahs)
 }
 
-/// Fetch ayahs for a chapter.  
-/// GET /verses/by_chapter/{chapter}?language={lang}&fields=text_uthmani&translations=20&per_page=300
+/// Fetch surah name by number.
 pub async fn fetch_surah_name(surah_number: u32) -> Result<String, String> {
     let surahs = fetch_surahs().await?;
     surahs
@@ -192,6 +191,7 @@ pub async fn fetch_surah_name(surah_number: u32) -> Result<String, String> {
         .ok_or_else(|| format!("Surah {} not found", surah_number))
 }
 
+/// Fetch ayahs for a chapter.
 pub async fn fetch_ayahs(
     surah_number: u32,
     language: Option<String>,
@@ -227,15 +227,20 @@ pub async fn fetch_ayahs(
     Ok(ayahs)
 }
 
-/// Fetch available reciters.
+/// Fetch available reciters, filtering only for those who support word-level highlighting (karaoke).
 /// GET /resources/recitations
 pub async fn fetch_reciters() -> Result<Vec<Reciter>, String> {
     let data: RecitationsApiResponse =
         api_get(&format!("{}/resources/recitations", QURAN_API_BASE)).await?;
 
+    // Known reciter IDs that are missing word-level timing data (segments) in the Quran.com API,
+    // or specifically excluded by user request.
+    let excluded_ids = [3, 11, 12, 13, 14, 15, 20, 100, 106];
+
     let reciters = data
         .recitations
         .into_iter()
+        .filter(|r| !excluded_ids.contains(&r.id))
         .map(|r| {
             let base_name = r
                 .reciter_name
@@ -265,8 +270,6 @@ pub async fn fetch_reciters() -> Result<Vec<Reciter>, String> {
 }
 
 /// Fetch audio URLs for all ayahs in a chapter for a specific reciter.
-/// GET /recitations/{reciterId}/by_chapter/{chapterNumber}
-/// Returns a list of (verse_key, full_url) pairs.
 pub async fn fetch_audio_urls(
     reciter_id: u32,
     chapter_number: u32,
@@ -301,8 +304,6 @@ pub async fn fetch_audio_urls(
 }
 
 /// Fetch per-verse word timings from the chapter_recitations endpoint.
-/// This endpoint returns a single chapter-level audio file with verse timestamps,
-/// so we normalize each verse's segment times relative to that verse start.
 pub async fn fetch_chapter_word_timings(
     reciter_id: u32,
     chapter_number: u32,
@@ -334,9 +335,6 @@ fn strip_html_tags(text: &str) -> String {
 }
 
 /// Normalise audio URLs from the Quran.com API.
-/// - Protocol-relative  `//mirrors.quranicaudio.com/...` → `https://...`
-/// - Absolute            `https://...` → as-is
-/// - Relative path       `AbdulBaset/Murattal/mp3/001001.mp3` → CDN prefix
 fn normalise_audio_url(raw: &str) -> String {
     if raw.starts_with("//") {
         format!("https:{}", raw)

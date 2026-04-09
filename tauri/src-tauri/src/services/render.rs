@@ -128,6 +128,12 @@ pub async fn start_render(
             .map_err(|e| format!("Failed to create output dir: {}", e))?;
     }
 
+    // ── Pre-step: Probe video dimensions for aspect ratio logic ───
+    if let Ok((w, h)) = ffmpeg.get_video_dimensions(&config.video_path) {
+        config.input_width = Some(w);
+        config.input_height = Some(h);
+    }
+
     // ── Step 1: Fetch ayah texts and surah name if not provided ─────
     if config.surah_name.is_empty() {
         if let Ok(name) = quran::fetch_surah_name(config.surah_number).await {

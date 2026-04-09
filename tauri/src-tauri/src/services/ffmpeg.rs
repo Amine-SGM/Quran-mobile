@@ -25,6 +25,8 @@ pub struct RenderConfig {
     pub show_translation: bool,
     pub custom_text: String,
     pub highlight_color: String,
+    pub input_width: Option<u32>,
+    pub input_height: Option<u32>,
 }
 
 pub struct FFmpegService {
@@ -38,6 +40,46 @@ impl FFmpegService {
             ffmpeg_path: "ffmpeg".to_string(),
             ffprobe_path: "ffprobe".to_string(),
         }
+    }
+
+    pub fn get_video_dimensions(&self, path: &PathBuf) -> Result<(u32, u32), String> {
+        let output = Command::new(&self.ffprobe_path)
+            .args([
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "csv=s=x:p=0",
+                &path.to_string_lossy(),
+            ])
+            .output()
+            .map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
+
+        if !output.status.success() {
+            return Err(format!(
+                "ffprobe failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+
+        let result = String::from_utf8_lossy(&output.stdout);
+        let dims: Vec<&str> = result.trim().split('x').collect();
+
+        if dims.len() != 2 {
+            return Err(format!("Invalid dimensions format: {}", result));
+        }
+
+        let width = dims[0]
+            .parse::<u32>()
+            .map_err(|_| "Failed to parse width")?;
+        let height = dims[1]
+            .parse::<u32>()
+            .map_err(|_| "Failed to parse height")?;
+
+        Ok((width, height))
     }
 
     /// Build the complete FFmpeg merge command.
@@ -98,15 +140,75 @@ impl FFmpegService {
         // ── Build video filters ───────────────────────────────
         let mut vf_parts: Vec<String> = Vec::new();
 
-        // Scale to target dimensions
-        vf_parts.push(format!(
-            "scale={}:{}:force_original_aspect_ratio=decrease",
-            config.width, config.height
-        ));
-        vf_parts.push(format!(
-            "pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
-            config.width, config.height
-        ));
+        // ── Aspect ratio logic ───────────────────────────────
+        let out_ar = config.width as f64 / config.height as f64;
+        let is_out_1_1_or_4_5 = (out_ar - 1.0).abs() < 0.1 || (out_ar - 0.8).abs() < 0.1;
+        let is_out_9_16 = (out_ar - 0.5625).abs() < 0.05;
+        let is_out_16_9 = (out_ar - 1.777).abs() < 0.05;
+
+        // Use output dimensions as default if input not probed
+        let (in_w, in_h) = (
+            config.input_width.unwrap_or(config.width),
+            config.input_height.unwrap_or(config.height),
+        );
+        let in_ar = in_w as f64 / in_h as f64;
+        let is_in_1_1_or_4_5 = (in_ar - 1.0).abs() < 0.1 || (in_ar - 0.8).abs() < 0.1;
+        let is_in_16_9 = (in_ar - 1.777).abs() < 0.1;
+        let is_in_9_16 = (in_ar - 0.5625).abs() < 0.1;
+
+        if is_out_1_1_or_4_5 {
+            // Rule 1: 1:1 or 4:5 > any > crop
+            vf_parts.push(format!(
+                "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{}",
+                config.width, config.height, config.width, config.height
+            ));
+        } else if is_out_9_16 {
+            if is_in_1_1_or_4_5 {
+                // Rule 2: 9:16 > 1:1 or 4:5 > fill
+                vf_parts.push(format!(
+                    "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                    config.width, config.height, config.width, config.height
+                ));
+            } else if is_in_16_9 {
+                // Rule 3: 9:16 > 16:9 > crop to 1:1 then fill to 9:16
+                vf_parts.push(format!(
+                    "crop=ih:ih,scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                    config.width, config.height, config.width, config.height
+                ));
+            } else {
+                // Default Fit
+                vf_parts.push(format!(
+                    "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                    config.width, config.height, config.width, config.height
+                ));
+            }
+        } else if is_out_16_9 {
+            if is_in_1_1_or_4_5 {
+                // Rule 4: 16:9 > 1:1 or 4:5 > fill
+                vf_parts.push(format!(
+                    "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                    config.width, config.height, config.width, config.height
+                ));
+            } else if is_in_9_16 {
+                // Rule 5: 16:9 > 9:16 > crop to 1:1 then fill to 16:9
+                vf_parts.push(format!(
+                    "crop=iw:iw,scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                    config.width, config.height, config.width, config.height
+                ));
+            } else {
+                // Default Fit
+                vf_parts.push(format!(
+                    "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                    config.width, config.height, config.width, config.height
+                ));
+            }
+        } else {
+            // Default Catch-all Fit
+            vf_parts.push(format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                config.width, config.height, config.width, config.height
+            ));
+        }
 
         // Subtitle overlay
         if config.subtitle_enabled {

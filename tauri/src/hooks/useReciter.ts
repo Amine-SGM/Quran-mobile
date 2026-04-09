@@ -13,7 +13,7 @@ interface UseReciterReturn {
   previewAudioUrl: string | null;
   selectReciter: (reciter: Reciter) => void;
   clearSelection: () => void;
-  playPreview: (reciter: Reciter) => void;
+  playPreview: (reciter: Reciter) => Promise<void>;
   stopPreview: () => void;
 }
 
@@ -41,13 +41,36 @@ export function useReciter(): UseReciterReturn {
     });
   }, []);
 
-  const playPreview = useCallback((reciter: Reciter) => {
-    const previewUrl = `https://cdn.islamic.network/quran/audio-preview/${reciter.id}/1.mp3`;
-    setState((prev) => ({
-      ...prev,
-      isPlaying: true,
-      previewAudioUrl: previewUrl,
-    }));
+  const playPreview = useCallback(async (reciter: Reciter) => {
+    try {
+      // Clear previous URL and stop if needed
+      setState((prev) => ({
+        ...prev,
+        isPlaying: false,
+        previewAudioUrl: null,
+      }));
+
+      const response = await fetch(
+        `https://api.quran.com/api/v4/chapter_recitations/${reciter.id}/1`
+      );
+      if (!response.ok) throw new Error("Failed to fetch preview");
+      
+      const data = await response.json();
+      const previewUrl = data.audio_file.audio_url;
+
+      setState((prev) => ({
+        ...prev,
+        isPlaying: true,
+        previewAudioUrl: previewUrl,
+      }));
+    } catch (err) {
+      console.error("Preview error:", err);
+      setState((prev) => ({
+        ...prev,
+        isPlaying: false,
+        previewAudioUrl: null,
+      }));
+    }
   }, []);
 
   const stopPreview = useCallback(() => {
