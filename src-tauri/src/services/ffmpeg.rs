@@ -30,17 +30,11 @@ pub struct RenderConfig {
     pub input_height: Option<u32>,
 }
 
-pub struct FFmpegService {
-    ffmpeg_path: String,
-    ffprobe_path: String,
-}
+pub struct FFmpegService;
 
 impl FFmpegService {
     pub fn new() -> Self {
-        Self {
-            ffmpeg_path: "ffmpeg".to_string(), // These remain for logging/compat if needed
-            ffprobe_path: "ffprobe".to_string(),
-        }
+        Self
     }
 
     pub async fn get_video_dimensions(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32), String> {
