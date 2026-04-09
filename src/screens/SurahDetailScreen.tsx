@@ -1,215 +1,165 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { colors, spacing, radius, typography, accessibility } from '~theme/tokens';
-import { Surah } from '~api/quran-api';
-
-const MAX_AYAHS_MOBILE = 10;
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import type { Surah, Ayah } from "../types";
+import { AyahCard } from "../components/AyahCard";
+import { RangeSelector } from "../components/RangeSelector";
+import { MAX_AYAHS_PER_VIDEO } from "../types";
+import "./SurahDetailScreen.css";
 
 interface SurahDetailScreenProps {
-    surah: Surah;
-    onNext: (start: number, end: number) => void;
-    onBack: () => void;
+  surah: Surah;
+  onBack: () => void;
+  onContinue: (surahNumber: number, ayahStart: number, ayahEnd: number) => void;
 }
 
-export const SurahDetailScreen: React.FC<SurahDetailScreenProps> = ({ surah, onNext, onBack }) => {
-    const [startAyah, setStartAyah] = useState('1');
-    const [endAyah, setEndAyah] = useState(String(Math.min(MAX_AYAHS_MOBILE, surah.totalAyahs)));
+interface AyahResponse {
+  surah_number: number;
+  number: number;
+  arabic_text: string;
+  english_translation?: string;
+}
 
-    const start = parseInt(startAyah) || 1;
-    const end = parseInt(endAyah) || 1;
-    const count = end - start + 1;
-    const isValid = start >= 1 && end <= surah.totalAyahs && start <= end;
-    const tooMany = isValid && count > MAX_AYAHS_MOBILE;
+export function SurahDetailScreen({
+  surah,
+  onBack,
+  onContinue,
+}: SurahDetailScreenProps) {
+  const [ayahs, setAyahs] = useState<Ayah[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [rangeStart, setRangeStart] = useState(1);
+  const [rangeEnd, setRangeEnd] = useState(Math.min(surah.totalAyahs, MAX_AYAHS_PER_VIDEO));
+  const [rangeError, setRangeError] = useState<string | null>(null);
 
-    const handleNext = () => {
-        if (isValid && !tooMany) {
-            onNext(start, end);
-        }
-    };
+  useEffect(() => {
+    loadAyahs();
+  }, [surah.number]);
 
-    return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-            {/* Surah Header Card */}
-            <View style={styles.headerCard}>
-                <Text style={styles.arabicHeader}>{surah.arabicName}</Text>
-                <Text style={styles.englishHeader}>{surah.englishName}</Text>
-                <View style={styles.badgeRow}>
-                    <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{surah.totalAyahs} Ayahs</Text>
-                    </View>
-                    <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{surah.revelationType}</Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* Selection Section */}
-            <View style={styles.inputSection}>
-                <Text style={styles.sectionTitle}>Define Verse Range</Text>
-                <View style={styles.rangeContainer}>
-                    <View style={styles.inputWrapper}>
-                        <Text style={styles.inputLabel}>From Ayah</Text>
-                        <TextInput 
-                            style={styles.input} 
-                            keyboardType="number-pad" 
-                            value={startAyah} 
-                            onChangeText={setStartAyah} 
-                            selectionColor={colors.accentEmerald}
-                        />
-                    </View>
-                    <View style={styles.inputWrapper}>
-                        <Text style={styles.inputLabel}>To Ayah</Text>
-                        <TextInput 
-                            style={styles.input} 
-                            keyboardType="number-pad" 
-                            value={endAyah} 
-                            onChangeText={setEndAyah} 
-                            selectionColor={colors.accentEmerald}
-                        />
-                    </View>
-                </View>
-
-                {tooMany && (
-                    <View style={styles.errorBox}>
-                        <Text style={styles.errorText}>⚠ Production Limit: {MAX_AYAHS_MOBILE} Ayahs per video on mobile.</Text>
-                    </View>
-                )}
-            </View>
-
-            {/* Bottom Actions */}
-            <View style={styles.footer}>
-                <Pressable 
-                    onPress={handleNext} 
-                    disabled={!isValid || tooMany}
-                    style={({ pressed }) => [
-                        styles.btnNext, 
-                        (!isValid || tooMany) && styles.btnDisabled, 
-                        pressed && styles.btnPressed
-                    ]}
-                    {...accessibility.minTouchTarget}
-                >
-                    <Text style={styles.btnText}>Continue to Reciters</Text>
-                </Pressable>
-                
-                <Pressable onPress={onBack} style={styles.btnBack}>
-                    <Text style={styles.btnBackText}>Change Surah</Text>
-                </Pressable>
-            </View>
-        </ScrollView>
-    );
-};
-
-const styles = StyleSheet.create({
-    container: { 
-        flex: 1, 
-        backgroundColor: colors.bgBase 
-    },
-    scrollContent: { 
-        padding: spacing.lg, 
-        gap: spacing.xl,
-        paddingBottom: spacing['3xl'] 
-    },
-    headerCard: { 
-        backgroundColor: colors.bgSurface, 
-        padding: spacing.xl, 
-        borderRadius: radius.lg, 
-        alignItems: 'center', 
-        gap: spacing.sm, 
-        borderWidth: 1, 
-        borderColor: colors.borderSubtle 
-    },
-    arabicHeader: { 
-        ...typography.arabicH1, 
-        color: colors.accentGold 
-    },
-    englishHeader: { 
-        ...typography.h2, 
-        color: colors.textPrimary 
-    },
-    badgeRow: { 
-        flexDirection: 'row', 
-        gap: spacing.xs 
-    },
-    badge: { 
-        backgroundColor: colors.accentEmeraldGlow, 
-        paddingHorizontal: spacing.sm, 
-        paddingVertical: 4, 
-        borderRadius: radius.full, 
-        borderWidth: 1, 
-        borderColor: colors.accentEmerald 
-    },
-    badgeText: { 
-        ...typography.small, 
-        color: colors.accentEmerald 
-    },
-    inputSection: { 
-        gap: spacing.md 
-    },
-    sectionTitle: { 
-        ...typography.h3, 
-        color: colors.textSecondary 
-    },
-    rangeContainer: { 
-        flexDirection: 'row', 
-        gap: spacing.md 
-    },
-    inputWrapper: { 
-        flex: 1, 
-        gap: spacing.xs 
-    },
-    inputLabel: { 
-        ...typography.small, 
-        color: colors.textMuted 
-    },
-    input: { 
-        backgroundColor: colors.bgSurface, 
-        borderRadius: radius.md, 
-        padding: spacing.md, 
-        color: colors.textPrimary, 
-        textAlign: 'center', 
-        ...typography.h3, 
-        borderWidth: 1, 
-        borderColor: colors.borderSubtle 
-    },
-    errorBox: {
-        backgroundColor: colors.errorGlow,
-        padding: spacing.md,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: colors.error,
-    },
-    errorText: { 
-        ...typography.small, 
-        color: colors.error, 
-        textAlign: 'center' 
-    },
-    footer: {
-        gap: spacing.md,
-        marginTop: spacing.md
-    },
-    btnNext: { 
-        backgroundColor: colors.accentEmerald, 
-        padding: spacing.md, 
-        borderRadius: radius.md, 
-        alignItems: 'center' 
-    },
-    btnDisabled: { 
-        opacity: 0.3 
-    },
-    btnPressed: { 
-        backgroundColor: colors.accentEmeraldDim 
-    },
-    btnText: { 
-        ...typography.body, 
-        color: colors.white, 
-        fontWeight: '700' 
-    },
-    btnBack: {
-        padding: spacing.md,
-        alignItems: 'center'
-    },
-    btnBackText: {
-        ...typography.body,
-        color: colors.textMuted
+  async function loadAyahs() {
+    try {
+      setLoading(true);
+      const data: AyahResponse[] = await invoke("get_ayahs", {
+        surahNumber: surah.number,
+        language: "en",
+      });
+      const transformed: Ayah[] = data.map((a) => ({
+        surahNumber: a.surah_number,
+        number: a.number,
+        arabicText: a.arabic_text,
+        englishTranslation: a.english_translation,
+      }));
+      setAyahs(transformed);
+      setError(null);
+    } catch (err) {
+      setError(err as string);
+    } finally {
+      setLoading(false);
     }
-});
+  }
+
+  const validateAndSetRange = (start: number, end: number) => {
+    setRangeStart(start);
+    setRangeEnd(end);
+
+    if (start < 1) {
+      setRangeError("Start must be at least 1");
+    } else if (end > surah.totalAyahs) {
+      setRangeError(`End cannot exceed ${surah.totalAyahs}`);
+    } else if (start > end) {
+      setRangeError("Start cannot be greater than end");
+    } else if (end - start + 1 > MAX_AYAHS_PER_VIDEO) {
+      setRangeError(`Maximum ${MAX_AYAHS_PER_VIDEO} ayahs allowed`);
+    } else {
+      setRangeError(null);
+    }
+  };
+
+  const handleContinue = () => {
+    if (rangeError) return;
+    onContinue(surah.number, rangeStart, rangeEnd);
+  };
+
+  const selectedAyahs = ayahs.filter(
+    (a) => a.number >= rangeStart && a.number <= rangeEnd
+  );
+
+  if (loading) {
+    return (
+      <div className="surah-detail loading">
+        <button className="back-button" onClick={onBack}>
+          ← Back
+        </button>
+        <div className="spinner">Loading ayahs...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="surah-detail error">
+        <button className="back-button" onClick={onBack}>
+          ← Back
+        </button>
+        <p>Failed to load ayahs: {error}</p>
+        <button onClick={loadAyahs}>Retry</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="surah-detail">
+      <header className="detail-header">
+        <button className="back-button" onClick={onBack}>
+          ← Back
+        </button>
+        <div className="surah-title">
+          <span className="surah-number">{surah.number}</span>
+          <h2 className="surah-gradient">{surah.englishName}</h2>
+          <span className="surah-arabic surah-gradient">{surah.arabicName}</span>
+        </div>
+        <p className="surah-meta">
+          {surah.totalAyahs} verses • {surah.revelationType}
+        </p>
+      </header>
+
+      <div className="range-section">
+        <h3>Select Ayah Range</h3>
+        <p className="range-hint">
+          Select up to {MAX_AYAHS_PER_VIDEO} ayahs for your video
+        </p>
+        <RangeSelector
+          surahNumber={surah.number}
+          totalAyahs={surah.totalAyahs}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          onChange={validateAndSetRange}
+        />
+        {rangeError && <p className="range-error">{rangeError}</p>}
+        <p className="selection-summary">
+          Selected: Ayah {rangeStart} - {rangeEnd} ({rangeEnd - rangeStart + 1} ayahs)
+        </p>
+      </div>
+
+      <div className="preview-section">
+        <h4>Preview</h4>
+        <div className="ayah-list">
+          {selectedAyahs.map((ayah) => (
+            <AyahCard key={ayah.number} ayah={ayah} />
+          ))}
+        </div>
+      </div>
+
+      <div className="action-bar">
+        <button
+          className="continue-button"
+          onClick={handleContinue}
+          disabled={!!rangeError}
+        >
+          Continue to Reciter Selection →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default SurahDetailScreen;

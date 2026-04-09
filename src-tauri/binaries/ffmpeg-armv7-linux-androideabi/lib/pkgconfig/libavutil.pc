@@ -1,0 +1,14 @@
+prefix=/teamspace/studios/this_studio/ffmpeg-android/ffmpeg-android-maker/build/ffmpeg/armeabi-v7a
+exec_prefix=${prefix}
+libdir=/teamspace/studios/this_studio/ffmpeg-android/ffmpeg-android-maker/build/ffmpeg/armeabi-v7a/lib
+includedir=/teamspace/studios/this_studio/ffmpeg-android/ffmpeg-android-maker/build/ffmpeg/armeabi-v7a/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 60.26.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil 
+Libs.private: -lm -lz -latomic -landroid -lmediandk -pthread
+Cflags: -I${includedir}

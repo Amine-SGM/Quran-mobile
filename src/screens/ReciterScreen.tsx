@@ -1,272 +1,179 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    FlatList,
-    Pressable,
-    ActivityIndicator,
-    StyleSheet,
-} from 'react-native';
-import { colors, spacing, radius, typography, accessibility } from '~theme/tokens';
-import { getReciters, Reciter } from '~api/quran-api';
+import { useState, useEffect, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import type { Reciter } from "../types";
+import { ReciterCard } from "../components/ReciterCard";
+import { AudioPlayer } from "../components/AudioPlayer";
+import { useReciter } from "../hooks/useReciter";
+import "./ReciterScreen.css";
 
 interface ReciterScreenProps {
-    onSelectReciter: (reciter: Reciter) => void;
-    onBack: () => void;
+  surahNumber: number;
+  ayahStart: number;
+  ayahEnd: number;
+  onBack: () => void;
+  onContinue: (reciterId: number) => void;
+  onRecitersLoaded?: (reciters: Reciter[]) => void;
 }
 
-export const ReciterScreen: React.FC<ReciterScreenProps> = ({ onSelectReciter, onBack }) => {
-    const [reciters, setReciters] = useState<Reciter[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
+interface ReciterResponse {
+  id: number;
+  name: string;
+  arabic_name: string;
+  style?: string;
+}
 
-    useEffect(() => {
-        loadReciters();
-    }, []);
+export function ReciterScreen({
+  surahNumber,
+  ayahStart,
+  ayahEnd,
+  onBack,
+  onContinue,
+  onRecitersLoaded,
+}: ReciterScreenProps) {
+  const [reciters, setReciters] = useState<Reciter[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [playingReciterId, setPlayingReciterId] = useState<number | null>(null);
 
-    const loadReciters = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const data = await getReciters('en');
-            setReciters(data);
-        } catch (err: any) {
-            setError('Failed to load voices: ' + err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const {
+    selectedReciter,
+    isPlaying,
+    previewAudioUrl,
+    selectReciter,
+    playPreview,
+    stopPreview,
+  } = useReciter();
 
-    const filteredReciters = reciters.filter(r =>
-        r.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  useEffect(() => {
+    loadReciters();
+  }, []);
 
-    const renderReciter = useCallback(
-        ({ item }: { item: Reciter }) => (
-            <Pressable
-                style={({ pressed }) => [
-                    styles.reciterCard,
-                    pressed && styles.reciterCardPressed
-                ]}
-                onPress={() => onSelectReciter(item)}
-                {...accessibility.minTouchTarget}
-            >
-                <View style={styles.cardContent}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
-                    </View>
-                    <View style={styles.infoContainer}>
-                        <Text style={styles.reciterName}>{item.name}</Text>
-                        {item.style ? (
-                            <View style={styles.styleBadge}>
-                                <Text style={styles.styleBadgeText}>{item.style}</Text>
-                            </View>
-                        ) : (
-                            <Text style={styles.metaText}>Classic Recitation</Text>
-                        )}
-                    </View>
-                    <Text style={styles.chevron}>→</Text>
-                </View>
-            </Pressable>
-        ),
-        [onSelectReciter]
-    );
-
-    if (loading) {
-        return (
-            <View style={styles.centered}>
-                <ActivityIndicator size="large" color={colors.accentEmerald} />
-                <Text style={styles.loadingText}>Summoning Voices...</Text>
-            </View>
-        );
+  async function loadReciters() {
+    try {
+      setLoading(true);
+      const data: ReciterResponse[] = await invoke("get_reciters");
+      const transformed: Reciter[] = data.map((r) => ({
+        id: r.id,
+        name: r.name,
+        arabicName: r.arabic_name,
+        style: r.style,
+      }));
+      setReciters(transformed);
+      onRecitersLoaded?.(transformed);
+      setError(null);
+    } catch (err) {
+      setError(err as string);
+    } finally {
+      setLoading(false);
     }
+  }
 
+  const handlePlayPreview = useCallback(
+    (reciter: Reciter) => {
+      if (playingReciterId === reciter.id) {
+        stopPreview();
+        setPlayingReciterId(null);
+      } else {
+        stopPreview();
+        playPreview(reciter);
+        setPlayingReciterId(reciter.id);
+      }
+    },
+    [playingReciterId, stopPreview, playPreview]
+  );
+
+  const handleSelectReciter = useCallback(
+    (reciter: Reciter) => {
+      if (playingReciterId === reciter.id) {
+        stopPreview();
+        setPlayingReciterId(null);
+      }
+      selectReciter(reciter);
+    },
+    [playingReciterId, stopPreview, selectReciter]
+  );
+
+  const handleContinue = () => {
+    if (selectedReciter) {
+      onContinue(selectedReciter.id);
+    }
+  };
+
+  const handlePreviewEnded = useCallback(() => {
+    setPlayingReciterId(null);
+    stopPreview();
+  }, [stopPreview]);
+
+  if (loading) {
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Pressable onPress={onBack} style={styles.backBtn}>
-                    <Text style={styles.backIcon}>←</Text>
-                </Pressable>
-                <View style={styles.headerTextGroup}>
-                    <Text style={styles.title}>Select Voice</Text>
-                    <Text style={styles.subtitle}>{reciters.length} celestial reciters available</Text>
-                </View>
-            </View>
-
-            <View style={styles.searchSection}>
-                <View style={styles.searchBar}>
-                    <Text style={styles.searchIcon}>🔍</Text>
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search reciters..."
-                        placeholderTextColor={colors.textMuted}
-                        value={searchTerm}
-                        onChangeText={setSearchTerm}
-                        selectionColor={colors.accentEmerald}
-                    />
-                </View>
-            </View>
-
-            <FlatList
-                data={filteredReciters}
-                keyExtractor={item => item.id}
-                renderItem={renderReciter}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                    <View style={styles.centered}>
-                        <Text style={styles.emptyText}>No voices found matching "{searchTerm}"</Text>
-                    </View>
-                }
-            />
-        </View>
+      <div className="reciter-screen loading">
+        <button className="back-button" onClick={onBack}>
+          ← Back
+        </button>
+        <div className="spinner">Loading reciters...</div>
+      </div>
     );
-};
+  }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.bgBase,
-    },
-    centered: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: spacing.lg,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: spacing.lg,
-        paddingTop: spacing.xl,
-        paddingBottom: spacing.md,
-        gap: spacing.md,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: radius.full,
-        backgroundColor: colors.bgSurface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: colors.borderSubtle,
-    },
-    backIcon: {
-        color: colors.textPrimary,
-        fontSize: 20,
-    },
-    headerTextGroup: {
-        gap: 2,
-    },
-    title: {
-        ...typography.h2,
-        color: colors.textPrimary,
-    },
-    subtitle: {
-        ...typography.small,
-        color: colors.textMuted,
-    },
-    searchSection: {
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md,
-    },
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.bgSurface,
-        borderRadius: radius.md,
-        paddingHorizontal: spacing.md,
-        height: 52,
-        borderWidth: 1,
-        borderColor: colors.borderSubtle,
-        gap: spacing.xs,
-    },
-    searchIcon: {
-        fontSize: 16,
-    },
-    searchInput: {
-        flex: 1,
-        ...typography.body,
-        color: colors.textPrimary,
-    },
-    listContent: {
-        paddingHorizontal: spacing.lg,
-        paddingBottom: spacing['3xl'],
-        gap: spacing.sm,
-    },
-    reciterCard: {
-        backgroundColor: colors.glassBase,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: colors.borderSubtle,
-        padding: spacing.md,
-    },
-    reciterCardPressed: {
-        backgroundColor: colors.glassElevated,
-        borderColor: colors.borderFocus,
-    },
-    cardContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-    },
-    avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: colors.accentEmeraldGlow,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: colors.accentEmerald,
-    },
-    avatarText: {
-        ...typography.h3,
-        color: colors.accentEmerald,
-        fontWeight: 'bold',
-    },
-    infoContainer: {
-        flex: 1,
-        gap: 2,
-    },
-    reciterName: {
-        ...typography.bodyLg,
-        color: colors.textPrimary,
-        fontWeight: '600',
-    },
-    metaText: {
-        ...typography.small,
-        color: colors.textMuted,
-    },
-    styleBadge: {
-        alignSelf: 'flex-start',
-        backgroundColor: colors.accentGoldGlow,
-        borderRadius: radius.full,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderWidth: 0.5,
-        borderColor: colors.accentGold,
-    },
-    styleBadgeText: {
-        fontSize: 10,
-        color: colors.accentGold,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    chevron: {
-        color: colors.textMuted,
-        fontSize: 18,
-    },
-    loadingText: {
-        ...typography.body,
-        color: colors.textSecondary,
-        marginTop: spacing.md,
-    },
-    emptyText: {
-        ...typography.body,
-        color: colors.textMuted,
-    },
-});
+  if (error) {
+    return (
+      <div className="reciter-screen error">
+        <button className="back-button" onClick={onBack}>
+          ← Back
+        </button>
+        <p>Failed to load reciters: {error}</p>
+        <button onClick={loadReciters}>Retry</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="reciter-screen">
+      <header className="reciter-header">
+        <button className="back-button" onClick={onBack}>
+          ← Back
+        </button>
+        <h1>Select Reciter</h1>
+        <p className="selection-info">
+          <span className="surah-gradient">Surah {surahNumber}</span>, Ayahs {ayahStart}-{ayahEnd}
+        </p>
+      </header>
+
+      <div className="reciter-list">
+        {reciters.map((reciter) => (
+          <ReciterCard
+            key={reciter.id}
+            reciter={reciter}
+            isSelected={selectedReciter?.id === reciter.id}
+            isPlaying={playingReciterId === reciter.id}
+            onSelect={() => handleSelectReciter(reciter)}
+            onPlayPreview={() => handlePlayPreview(reciter)}
+          />
+        ))}
+      </div>
+
+      {playingReciterId && previewAudioUrl && (
+        <div className="preview-player">
+          <AudioPlayer
+            audioUrl={previewAudioUrl}
+            isPlaying={isPlaying}
+            onEnded={handlePreviewEnded}
+            autoPlay
+          />
+        </div>
+      )}
+
+      <div className="action-bar">
+        <button
+          className="continue-button"
+          onClick={handleContinue}
+          disabled={!selectedReciter}
+        >
+          Continue to Output Settings →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default ReciterScreen;

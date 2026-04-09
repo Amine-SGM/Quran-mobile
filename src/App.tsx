@@ -1,213 +1,263 @@
-// App shell — React Navigation stack with dark theme
-import React, { useEffect } from 'react';
-import { StatusBar } from 'react-native';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { HomeScreen } from './screens/HomeScreen';
-import { SurahDetailScreen } from './screens/SurahDetailScreen';
-import { ReciterScreen } from './screens/ReciterScreen';
-import { VideoSourceScreen } from './screens/VideoSourceScreen';
-import { SubtitleConfigScreen, SubtitleConfig } from './screens/SubtitleConfigScreen';
-import { ExportScreen } from './screens/ExportScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
-import { colors } from './theme';
-import { cleanupOldCache } from './services/audio-cache';
-import { Surah, Reciter } from '~api/quran-api';
+import { useState } from "react";
+import type { Surah, AspectRatio, Resolution, VideoSource, SubtitleConfig, Reciter } from "./types";
+import { HomeScreen } from "./screens/HomeScreen";
+import { SurahDetailScreen } from "./screens/SurahDetailScreen";
+import { ReciterScreen } from "./screens/ReciterScreen";
+import { OutputSettingsScreen } from "./screens/OutputSettingsScreen";
+import { VideoSourceScreen } from "./screens/VideoSourceScreen";
+import { StockVideoScreen } from "./screens/StockVideoScreen";
+import { ExportScreen } from "./screens/ExportScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
+import { ToastContainer } from "./components/Toast";
+import { useToast } from "./hooks/useToast";
+import "./App.css";
 
-interface VideoSource {
-    type: 'upload' | 'stock';
-    localPath: string;
-    attribution?: string;
-    thumbnailUrl?: string;
+type Screen = "home" | "surahDetail" | "reciter" | "outputSettings" | "videoSource" | "stockVideo" | "export" | "settings";
+
+interface NavigationState {
+  screen: Screen;
+  selectedSurah: Surah | null;
+  ayahRangeStart: number | null;
+  ayahRangeEnd: number | null;
+  selectedReciterId: number | null;
+  reciters: Reciter[];
+  aspectRatio: AspectRatio | null;
+  resolution: Resolution | null;
+  videoSource: VideoSource | null;
+  subtitleConfig: SubtitleConfig | null;
 }
 
-export type RootStackParamList = {
-    Home: undefined;
-    SurahDetail: { surah: Surah };
-    Reciter: { surah: Surah; ayahStart: number; ayahEnd: number };
-    SubtitleConfig: { surah: Surah; ayahStart: number; ayahEnd: number; reciter: Reciter };
-    VideoSource: {
-        surah: Surah;
-        ayahStart: number;
-        ayahEnd: number;
-        reciter: Reciter;
-        subtitleConfig: SubtitleConfig;
-        aspectRatio: string;
-        resolution: string;
-    };
-    Export: {
-        surah: Surah;
-        ayahStart: number;
-        ayahEnd: number;
-        reciter: Reciter;
-        videoSource: VideoSource;
-        subtitleConfig: SubtitleConfig;
-        aspectRatio: string;
-        resolution: string;
-    };
-    Settings: undefined;
-};
+function App() {
+  const toast = useToast();
+  const [nav, setNav] = useState<NavigationState>({
+    screen: "home",
+    selectedSurah: null,
+    ayahRangeStart: null,
+    ayahRangeEnd: null,
+    selectedReciterId: null,
+    reciters: [],
+    aspectRatio: null,
+    resolution: null,
+    videoSource: null,
+    subtitleConfig: null,
+  });
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+  const handleSurahSelect = (surah: Surah) => {
+    setNav({
+      screen: "surahDetail",
+      selectedSurah: surah,
+      ayahRangeStart: null,
+      ayahRangeEnd: null,
+      selectedReciterId: null,
+      reciters: [],
+      aspectRatio: null,
+      resolution: null,
+      videoSource: null,
+      subtitleConfig: null,
+    });
+  };
 
-const darkNavTheme = {
-    ...DefaultTheme,
-    colors: {
-        ...DefaultTheme.colors,
-        background: colors.bgPrimary,
-        card: colors.bgSecondary,
-        text: colors.textPrimary,
-        border: colors.borderSubtle,
-        primary: colors.emerald,
-        notification: colors.emerald,
-    },
-};
+  const handleBackToHome = () => {
+    setNav({
+      screen: "home",
+      selectedSurah: null,
+      ayahRangeStart: null,
+      ayahRangeEnd: null,
+      selectedReciterId: null,
+      reciters: [],
+      aspectRatio: null,
+      resolution: null,
+      videoSource: null,
+      subtitleConfig: null,
+    });
+  };
 
-export const App: React.FC = () => {
-    useEffect(() => {
-        // Clean up stale cache on app start
-        cleanupOldCache().catch(() => { });
-    }, []);
+  const handleContinueToReciter = (
+    _surahNumber: number,
+    ayahStart: number,
+    ayahEnd: number
+  ) => {
+    if (!nav.selectedSurah || ayahStart < 1 || ayahEnd < ayahStart) return;
+    setNav((prev) => ({
+      ...prev,
+      screen: "reciter",
+      ayahRangeStart: ayahStart,
+      ayahRangeEnd: ayahEnd,
+    }));
+  };
 
-    return (
-        <NavigationContainer theme={darkNavTheme}>
-            <StatusBar barStyle="light-content" backgroundColor={colors.bgPrimary} />
-            <Stack.Navigator
-                screenOptions={{
-                    headerStyle: { backgroundColor: colors.bgSecondary },
-                    headerTintColor: colors.textPrimary,
-                    headerTitleStyle: { fontWeight: '600', fontSize: 16 },
-                    headerShadowVisible: false,
-                    contentStyle: { backgroundColor: colors.bgPrimary },
-                    animation: 'slide_from_right',
-                }}
-            >
-                <Stack.Screen
-                    name="Home"
-                    options={{ headerShown: false }}
-                >
-                    {({ navigation }) => (
-                        <HomeScreen
-                            onSelectSurah={surah => navigation.navigate('SurahDetail', { surah })}
-                            onOpenSettings={() => navigation.navigate('Settings')}
-                        />
-                    )}
-                </Stack.Screen>
+  const handleBackToSurahDetail = () => {
+    setNav((prev) => ({
+      ...prev,
+      screen: "surahDetail",
+      selectedReciterId: null,
+    }));
+  };
 
-                <Stack.Screen
-                    name="SurahDetail"
-                    options={{ title: 'Select Ayahs' }}
-                >
-                    {({ navigation, route }) => (
-                        <SurahDetailScreen
-                            surah={route.params.surah}
-                            onNext={(start, end) =>
-                                navigation.navigate('Reciter', {
-                                    surah: route.params.surah,
-                                    ayahStart: start,
-                                    ayahEnd: end,
-                                })
-                            }
-                            onBack={() => navigation.goBack()}
-                        />
-                    )}
-                </Stack.Screen>
+  const handleContinueToOutputSettings = (reciterId: number) => {
+    if (!nav.selectedSurah || nav.ayahRangeStart == null || nav.ayahRangeEnd == null) return;
+    setNav((prev) => ({
+      ...prev,
+      screen: "outputSettings",
+      selectedReciterId: reciterId,
+    }));
+  };
 
-                <Stack.Screen
-                    name="Reciter"
-                    options={{ title: 'Select Reciter' }}
-                >
-                    {({ navigation, route }) => (
-                        <ReciterScreen
-                            onSelectReciter={reciter =>
-                                navigation.navigate('SubtitleConfig', {
-                                    surah: route.params.surah,
-                                    ayahStart: route.params.ayahStart,
-                                    ayahEnd: route.params.ayahEnd,
-                                    reciter,
-                                })
-                            }
-                            onBack={() => navigation.goBack()}
-                        />
-                    )}
-                </Stack.Screen>
+  const handleRecitersLoaded = (reciters: Reciter[]) => {
+    setNav((prev) => ({ ...prev, reciters }));
+  };
 
-                <Stack.Screen
-                    name="SubtitleConfig"
-                    options={{ title: 'Style & Quality' }}
-                >
-                    {({ navigation, route }) => (
-                        <SubtitleConfigScreen
-                            onNext={(subtitleConfig, aspectRatio, resolution) =>
-                                navigation.navigate('VideoSource', {
-                                    surah: route.params.surah,
-                                    ayahStart: route.params.ayahStart,
-                                    ayahEnd: route.params.ayahEnd,
-                                    reciter: route.params.reciter,
-                                    subtitleConfig,
-                                    aspectRatio,
-                                    resolution,
-                                })
-                            }
-                            onBack={() => navigation.goBack()}
-                        />
-                    )}
-                </Stack.Screen>
+  const handleBackToReciter = () => {
+    setNav((prev) => ({
+      ...prev,
+      screen: "reciter",
+      aspectRatio: null,
+      resolution: null,
+    }));
+  };
 
-                <Stack.Screen
-                    name="VideoSource"
-                    options={{ title: 'Select Video' }}
-                >
-                    {({ navigation, route }) => (
-                        <VideoSourceScreen
-                            aspectRatio={route.params.aspectRatio}
-                            resolution={route.params.resolution}
-                            onSelectVideo={videoSource =>
-                                navigation.navigate('Export', {
-                                    surah: route.params.surah,
-                                    ayahStart: route.params.ayahStart,
-                                    ayahEnd: route.params.ayahEnd,
-                                    reciter: route.params.reciter,
-                                    videoSource,
-                                    subtitleConfig: route.params.subtitleConfig,
-                                    aspectRatio: route.params.aspectRatio,
-                                    resolution: route.params.resolution,
-                                })
-                            }
-                            onBack={() => navigation.goBack()}
-                        />
-                    )}
-                </Stack.Screen>
+  const handleContinueToVideoSource = (
+    aspectRatio: AspectRatio,
+    resolution: Resolution,
+    subtitleConfig: SubtitleConfig
+  ) => {
+    if (!nav.selectedSurah || nav.selectedReciterId == null) return;
+    setNav((prev) => ({
+      ...prev,
+      screen: "videoSource",
+      aspectRatio,
+      resolution,
+      subtitleConfig,
+    }));
+  };
 
-                <Stack.Screen
-                    name="Export"
-                    options={{ title: 'Export', headerBackVisible: false }}
-                >
-                    {({ navigation, route }) => (
-                        <ExportScreen
-                            surah={route.params.surah}
-                            reciter={route.params.reciter}
-                            ayahStart={route.params.ayahStart}
-                            ayahEnd={route.params.ayahEnd}
-                            videoSource={route.params.videoSource}
-                            subtitleConfig={route.params.subtitleConfig}
-                            aspectRatio={route.params.aspectRatio}
-                            resolution={route.params.resolution}
-                            onBack={() => navigation.goBack()}
-                            onHome={() => navigation.popToTop()}
-                        />
-                    )}
-                </Stack.Screen>
+  const handleBackToOutputSettings = () => {
+    setNav((prev) => ({
+      ...prev,
+      screen: "outputSettings",
+      videoSource: null,
+    }));
+  };
 
-                <Stack.Screen
-                    name="Settings"
-                    options={{ title: 'Settings' }}
-                >
-                    {({ navigation }) => (
-                        <SettingsScreen onBack={() => navigation.goBack()} />
-                    )}
-                </Stack.Screen>
-            </Stack.Navigator>
-        </NavigationContainer>
-    );
-};
+  const handleContinueToExport = (videoSource: VideoSource) => {
+    if (!nav.selectedSurah || nav.aspectRatio == null || nav.resolution == null || nav.subtitleConfig == null) return;
+    setNav((prev) => ({
+      ...prev,
+      screen: "export",
+      videoSource,
+    }));
+  };
+
+  const handleStockVideo = () => {
+    setNav((prev) => ({
+      ...prev,
+      screen: "stockVideo",
+    }));
+  };
+
+  const handleBackToVideoSource = () => {
+    setNav((prev) => ({
+      ...prev,
+      screen: "videoSource",
+    }));
+  };
+
+  const handleOpenSettings = () => {
+    setNav((prev) => ({
+      ...prev,
+      screen: "settings",
+    }));
+  };
+
+  return (
+    <div className="app">
+      <ToastContainer toasts={toast.toasts} onDismiss={toast.dismissToast} />
+      {nav.screen === "home" && (
+        <HomeScreen onSurahSelect={handleSurahSelect} onSettings={handleOpenSettings} showError={toast.showError} />
+      )}
+
+      {nav.screen === "surahDetail" && nav.selectedSurah && (
+        <SurahDetailScreen
+          surah={nav.selectedSurah}
+          onBack={handleBackToHome}
+          onContinue={handleContinueToReciter}
+        />
+      )}
+
+      {nav.screen === "reciter" && nav.selectedSurah && (
+        <ReciterScreen
+          surahNumber={nav.selectedSurah.number}
+          ayahStart={nav.ayahRangeStart!}
+          ayahEnd={nav.ayahRangeEnd!}
+          onBack={handleBackToSurahDetail}
+          onContinue={handleContinueToOutputSettings}
+          onRecitersLoaded={handleRecitersLoaded}
+        />
+      )}
+
+      {nav.screen === "outputSettings" && nav.selectedSurah && (
+        <OutputSettingsScreen
+          surahNumber={nav.selectedSurah.number}
+          ayahStart={nav.ayahRangeStart!}
+          ayahEnd={nav.ayahRangeEnd!}
+          reciterId={nav.selectedReciterId!}
+          onBack={handleBackToReciter}
+          onContinue={handleContinueToVideoSource}
+          initialAspectRatio={nav.aspectRatio ?? undefined}
+          initialResolution={nav.resolution ?? undefined}
+          initialSubtitleConfig={nav.subtitleConfig ?? undefined}
+        />
+      )}
+
+      {nav.screen === "videoSource" && nav.selectedSurah && (
+        <VideoSourceScreen
+          surahNumber={nav.selectedSurah.number}
+          ayahStart={nav.ayahRangeStart!}
+          ayahEnd={nav.ayahRangeEnd!}
+          reciterId={nav.selectedReciterId!}
+          aspectRatio={nav.aspectRatio!}
+          resolution={nav.resolution!}
+          onBack={handleBackToOutputSettings}
+          onContinue={handleContinueToExport}
+          onStockVideo={handleStockVideo}
+        />
+      )}
+
+      {nav.screen === "stockVideo" && nav.selectedSurah && (
+        <StockVideoScreen
+          surahNumber={nav.selectedSurah.number}
+          ayahStart={nav.ayahRangeStart!}
+          ayahEnd={nav.ayahRangeEnd!}
+          reciterId={nav.selectedReciterId!}
+          aspectRatio={nav.aspectRatio!}
+          resolution={nav.resolution!}
+          onBack={handleBackToVideoSource}
+          onSelect={handleContinueToExport}
+        />
+      )}
+
+      {nav.screen === "export" && nav.selectedSurah && (
+        <ExportScreen
+          surah={nav.selectedSurah}
+          ayahStart={nav.ayahRangeStart!}
+          ayahEnd={nav.ayahRangeEnd!}
+          reciterId={nav.selectedReciterId!}
+          reciters={nav.reciters}
+          videoSource={nav.videoSource!}
+          subtitleConfig={nav.subtitleConfig!}
+          aspectRatio={nav.aspectRatio!}
+          resolution={nav.resolution!}
+          onBack={() => setNav((prev) => ({ ...prev, screen: "videoSource" }))}
+          onStartOver={handleBackToHome}
+          showSuccess={toast.showSuccess}
+        />
+      )}
+
+      {nav.screen === "settings" && (
+        <SettingsScreen onBack={handleBackToHome} showError={toast.showError} showSuccess={toast.showSuccess} />
+      )}
+    </div>
+  );
+}
+
+export default App;

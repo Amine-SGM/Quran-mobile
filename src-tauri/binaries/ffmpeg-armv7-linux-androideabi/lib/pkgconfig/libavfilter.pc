@@ -1,0 +1,14 @@
+prefix=/teamspace/studios/this_studio/ffmpeg-android/ffmpeg-android-maker/build/ffmpeg/armeabi-v7a
+exec_prefix=${prefix}
+libdir=/teamspace/studios/this_studio/ffmpeg-android/ffmpeg-android-maker/build/ffmpeg/armeabi-v7a/lib
+includedir=/teamspace/studios/this_studio/ffmpeg-android/ffmpeg-android-maker/build/ffmpeg/armeabi-v7a/include
+
+Name: libavfilter
+Description: FFmpeg audio/video filtering library
+Version: 11.14.100
+Requires: 
+Requires.private: libswscale >= 9.5.100, libavformat >= 62.12.100, libavcodec >= 62.28.100, libswresample >= 6.3.100, libavutil >= 60.26.100
+Conflicts:
+Libs: -L${libdir}  -lavfilter 
+Libs.private: -pthread -lm -latomic -lz -L/teamspace/studios/this_studio/ffmpeg-android/ffmpeg-android-maker/build/external/armeabi-v7a/lib -lfreetype -lz
+Cflags: -I${includedir}

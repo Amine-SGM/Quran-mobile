@@ -1,212 +1,200 @@
-// Settings Screen
-import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    ScrollView,
-    Switch,
-    Alert,
-    StyleSheet,
-    Linking,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, commonStyles, spacing, radius } from '../theme';
-import { clearAudioCache } from '../services/audio-cache';
-import { clearVideoCache } from '../services/video-cache';
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import type { Resolution } from "../types";
+import { ApiKeySettings } from "../components/ApiKeySettings";
+import { CacheManager } from "../components/CacheManager";
+import { ToggleSwitch } from "../components/ToggleSwitch";
+import "./SettingsScreen.css";
 
 interface SettingsScreenProps {
-    onBack: () => void;
+  onBack: () => void;
+  showError?: (message: string) => void;
+  showSuccess?: (message: string) => void;
 }
 
-const RESOLUTION_OPTIONS = ['720p', '1080p'] as const;
-type Resolution = typeof RESOLUTION_OPTIONS[number];
+interface AppSettings {
+  pexelsApiKeySet: boolean;
+  exportResolution: string;
+  autoCleanup: boolean;
+  showVideoPreview: boolean;
+}
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
-    const [pexelsApiKey, setPexelsApiKey] = useState('');
-    const [showApiKey, setShowApiKey] = useState(false);
-    const [mobileResolution, setMobileResolution] = useState<Resolution>('720p');
-    const [autoCleanup, setAutoCleanup] = useState(true);
-    const [saving, setSaving] = useState(false);
+interface CacheStats {
+  totalFiles: number;
+  totalSizeBytes: number;
+  oldestFileAgeSeconds: number | null;
+  formattedSize: string;
+}
 
-    useEffect(() => {
-        (async () => {
-            const key = await AsyncStorage.getItem('pexelsApiKey');
-            const res = await AsyncStorage.getItem('mobileResolution');
-            const cleanup = await AsyncStorage.getItem('autoCleanup');
-            if (key) setPexelsApiKey(key);
-            if (res) setMobileResolution(res as Resolution);
-            if (cleanup !== null) setAutoCleanup(cleanup === 'true');
-        })();
-    }, []);
+interface ClearCacheResponse {
+  deletedFiles: number;
+  freedBytes: number;
+}
 
-    const handleSave = async () => {
-        setSaving(true);
-        try {
-            await AsyncStorage.setItem('pexelsApiKey', pexelsApiKey.trim());
-            await AsyncStorage.setItem('mobileResolution', mobileResolution);
-            await AsyncStorage.setItem('autoCleanup', String(autoCleanup));
-            Alert.alert('Saved', 'Settings saved successfully.');
-        } catch {
-            Alert.alert('Error', 'Failed to save settings.');
-        } finally {
-            setSaving(false);
-        }
-    };
+export function SettingsScreen({ onBack, showError, showSuccess }: SettingsScreenProps) {
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
 
-    const handleClearCache = async () => {
-        Alert.alert(
-            'Clear Cache',
-            'This will delete all cached audio and video files. Continue?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Clear',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await clearAudioCache();
-                        await clearVideoCache();
-                        Alert.alert('Done', 'Cache cleared.');
-                    },
-                },
-            ]
-        );
-    };
+  useEffect(() => {
+    loadSettings();
+  }, []);
 
-    return (
-        <ScrollView style={commonStyles.screen} contentContainerStyle={commonStyles.scrollContent}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack} style={commonStyles.btnGhost}>
-                    <Text style={commonStyles.btnGhostText}>← Back</Text>
-                </TouchableOpacity>
-                <Text style={styles.title}>Settings</Text>
-            </View>
+  async function loadSettings() {
+    try {
+      setLoading(true);
+      const data: AppSettings = await invoke("get_settings");
+      setSettings(data);
+    } catch (err) {
+      showError?.("Failed to load settings");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-            {/* Pexels API Key */}
-            <Text style={commonStyles.sectionTitle}>Pexels API Key</Text>
-            <View style={commonStyles.card}>
-                <Text style={styles.settingDesc}>
-                    Required for stock video search.{' '}
-                    <Text
-                        style={{ color: colors.emerald, textDecorationLine: 'underline' }}
-                        onPress={() => Linking.openURL('https://www.pexels.com/api/')}
-                    >
-                        Get a free key →
-                    </Text>
-                </Text>
-                <View style={styles.apiKeyRow}>
-                    <TextInput
-                        style={[commonStyles.input, { flex: 1 }]}
-                        value={pexelsApiKey}
-                        onChangeText={setPexelsApiKey}
-                        placeholder="Paste your Pexels API key…"
-                        placeholderTextColor={colors.textMuted}
-                        secureTextEntry={!showApiKey}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                    />
-                    <TouchableOpacity
-                        style={styles.showHideBtn}
-                        onPress={() => setShowApiKey(v => !v)}
-                    >
-                        <Text style={{ color: colors.textMuted, fontSize: 18 }}>
-                            {showApiKey ? '🙈' : '👁️'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
+  async function loadCacheStats() {
+    try {
+      const stats: CacheStats = await invoke("get_cache_stats");
+      setCacheStats(stats);
+    } catch {
+      // Silently fail for cache stats
+    }
+  }
 
-            {/* Export Resolution */}
-            <Text style={commonStyles.sectionTitle}>Export Resolution</Text>
-            <View style={styles.chipRow}>
-                {RESOLUTION_OPTIONS.map(r => (
-                    <TouchableOpacity
-                        key={r}
-                        style={[commonStyles.chip, mobileResolution === r && commonStyles.chipActive]}
-                        onPress={() => setMobileResolution(r)}
-                    >
-                        <Text style={[commonStyles.chipText, mobileResolution === r && commonStyles.chipTextActive]}>
-                            {r}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-            <Text style={styles.hint}>720p is faster; 1080p gives higher quality output.</Text>
+  async function updateSetting(updates: Partial<AppSettings>) {
+    try {
+      setSaving(true);
+      await invoke("set_settings", {
+        params: {
+          export_resolution: updates.exportResolution,
+          auto_cleanup: updates.autoCleanup,
+          show_video_preview: updates.showVideoPreview,
+        },
+      });
+      setSettings((prev) => (prev ? { ...prev, ...updates } : null));
+      showSuccess?.("Settings saved");
+    } catch {
+      showError?.("Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  }
 
-            {/* Auto-cleanup */}
-            <Text style={commonStyles.sectionTitle}>Cache</Text>
-            <View style={[commonStyles.card, commonStyles.spaceBetween]}>
-                <View>
-                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary }}>
-                        Auto-cleanup cache
-                    </Text>
-                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                        Delete audio/video files after 3 hours
-                    </Text>
-                </View>
-                <Switch
-                    value={autoCleanup}
-                    onValueChange={setAutoCleanup}
-                    trackColor={{ false: colors.bgSurfaceActive, true: colors.emerald }}
-                    thumbColor={colors.white}
-                />
-            </View>
-
-            <TouchableOpacity
-                style={[commonStyles.btnSecondary, { marginTop: spacing.sm }]}
-                onPress={handleClearCache}
-            >
-                <Text style={[commonStyles.btnSecondaryText, { color: colors.ruby }]}>🗑 Clear Cache Now</Text>
-            </TouchableOpacity>
-
-            {/* Save button */}
-            <TouchableOpacity
-                style={[commonStyles.btnPrimary, { marginTop: spacing.xl }]}
-                onPress={handleSave}
-                disabled={saving}
-            >
-                <Text style={commonStyles.btnPrimaryText}>{saving ? 'Saving…' : 'Save Settings'}</Text>
-            </TouchableOpacity>
-        </ScrollView>
+  async function handleSetApiKey(key: string) {
+    await invoke("set_settings", { params: { pexels_api_key: key } });
+    setSettings((prev) =>
+      prev ? { ...prev, pexelsApiKeySet: true } : null
     );
-};
+  }
 
-const styles = StyleSheet.create({
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: spacing.lg,
-    },
-    title: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: colors.textPrimary,
-        marginLeft: spacing.md,
-    },
-    settingDesc: {
-        fontSize: 13,
-        color: colors.textMuted,
-        marginBottom: spacing.sm,
-        lineHeight: 18,
-    },
-    apiKeyRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    showHideBtn: {
-        padding: spacing.sm,
-    },
-    chipRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginBottom: spacing.sm,
-    },
-    hint: {
-        fontSize: 12,
-        color: colors.textMuted,
-        marginBottom: spacing.md,
-    },
-});
+  async function handleClearApiKey() {
+    await invoke("set_settings", { params: { pexels_api_key: "" } });
+    setSettings((prev) =>
+      prev ? { ...prev, pexelsApiKeySet: false } : null
+    );
+  }
+
+  async function handleClearCache() {
+    try {
+      setClearingCache(true);
+      const result: ClearCacheResponse = await invoke("clear_cache");
+      showSuccess?.(`Cleared ${result.deletedFiles} cached files`);
+      await loadCacheStats();
+    } catch {
+      showError?.("Failed to clear cache");
+    } finally {
+      setClearingCache(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="settings-screen">
+        <header className="settings-header">
+          <button className="back-button" onClick={onBack}>
+            ← Back
+          </button>
+          <h1>Settings</h1>
+        </header>
+        <div className="loading-state">Loading settings...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="settings-screen">
+      <header className="settings-header">
+        <button className="back-button" onClick={onBack}>
+          ← Back
+        </button>
+        <h1>Settings</h1>
+      </header>
+
+      <div className="settings-content">
+        <section className="settings-section">
+          <ApiKeySettings
+            isSet={settings?.pexelsApiKeySet ?? false}
+            onSetKey={handleSetApiKey}
+            onClearKey={handleClearApiKey}
+          />
+        </section>
+
+        <section className="settings-section">
+          <h3>Export Defaults</h3>
+          <div className="resolution-options">
+            {(["720p", "1080p"] as Resolution[]).map((res) => (
+              <button
+                key={res}
+                className={`resolution-option ${settings?.exportResolution === res ? "selected" : ""}`}
+                onClick={() => updateSetting({ exportResolution: res })}
+                disabled={saving}
+              >
+                {res}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="settings-section">
+          <ToggleSwitch
+            label="Auto-cleanup cache"
+            checked={settings?.autoCleanup ?? true}
+            onChange={(checked) => updateSetting({ autoCleanup: checked })}
+            disabled={saving}
+          />
+          <ToggleSwitch
+            label="Show video preview"
+            checked={settings?.showVideoPreview ?? true}
+            onChange={(checked) => updateSetting({ showVideoPreview: checked })}
+            disabled={saving}
+          />
+        </section>
+
+        <section className="settings-section">
+          <CacheManager
+            stats={cacheStats}
+            loading={false}
+            clearing={clearingCache}
+            onClearCache={handleClearCache}
+            onRefresh={loadCacheStats}
+          />
+        </section>
+
+        <section className="settings-section about-section">
+          <h3>About</h3>
+          <div className="about-info">
+            <p className="app-name">Quran Short Maker</p>
+            <p className="app-version">Version 0.1.0</p>
+            <p className="app-description">
+              Create short videos with Quran recitations, background videos, and subtitles.
+            </p>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export default SettingsScreen;

@@ -1,454 +1,251 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-    View,
-    Text,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Alert,
-    Animated,
-    Easing,
-    StatusBar,
-} from 'react-native';
-import Share from 'react-native-share';
-import { colors, spacing, radius, typography, accessibility } from '~theme/tokens';
-import { Surah, Reciter, getAudioUrlsForChapter, getVersesByChapter } from '~api/quran-api';
-import { getCachedAudio } from '../services/audio-cache';
-import { renderVideo, buildOutputPath } from '../services/ffmpeg-service';
-import { SubtitleConfig } from './SubtitleConfigScreen';
-
-interface VideoSource {
-    type: 'upload' | 'stock';
-    localPath: string;
-    attribution?: string;
-}
+import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import type { Surah, Reciter, VideoSource, SubtitleConfig, AspectRatio, Resolution } from "../types";
+import { ProgressRing } from "../components/ProgressRing";
+import { ShareButton } from "../components/ShareButton";
+import "./ExportScreen.css";
 
 interface ExportScreenProps {
-    surah: Surah;
-    reciter: Reciter;
-    ayahStart: number;
-    ayahEnd: number;
-    videoSource: VideoSource;
-    subtitleConfig: SubtitleConfig;
-    aspectRatio: string;
-    resolution: string;
-    onBack: () => void;
-    onHome: () => void;
+  surah: Surah;
+  ayahStart: number;
+  ayahEnd: number;
+  reciterId: number;
+  reciters: Reciter[];
+  videoSource: VideoSource;
+  subtitleConfig: SubtitleConfig;
+  aspectRatio: AspectRatio;
+  resolution: Resolution;
+  onBack: () => void;
+  onStartOver: () => void;
+  showSuccess?: (message: string) => void;
 }
 
-type RenderStatus = 'idle' | 'downloading_audio' | 'rendering' | 'done' | 'error';
+interface RenderProgress {
+  job_id: string;
+  progress: number;
+  message: string;
+}
 
-export const ExportScreen: React.FC<ExportScreenProps> = ({
-    surah,
-    reciter,
-    ayahStart,
-    ayahEnd,
-    videoSource,
-    subtitleConfig,
-    aspectRatio,
-    resolution,
-    onBack,
-    onHome,
-}) => {
-    const [status, setStatus] = useState<RenderStatus>('idle');
-    const [progress, setProgress] = useState(0);
-    const [statusMessage, setStatusMessage] = useState('');
-    const [outputPath, setOutputPath] = useState<string | null>(null);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const spinAnim = useRef(new Animated.Value(0)).current;
+interface RenderComplete {
+  job_id: string;
+  output_path: string;
+}
 
-    useEffect(() => {
-        if (status === 'downloading_audio' || status === 'rendering') {
-            Animated.loop(
-                Animated.timing(spinAnim, {
-                    toValue: 1,
-                    duration: 1500,
-                    easing: Easing.bezier(0.4, 0, 0.2, 1),
-                    useNativeDriver: true,
-                })
-            ).start();
-        } else {
-            spinAnim.stopAnimation();
-        }
-    }, [status]);
+interface RenderError {
+  job_id: string;
+  error: string;
+}
 
-    const ayahCount = ayahEnd - ayahStart + 1;
+interface StartRenderResponse {
+  job_id: string;
+}
 
-    const handleExport = async () => {
-        try {
-            setStatus('downloading_audio');
-            setProgress(0);
-            setErrorMessage(null);
+export function ExportScreen({
+  surah,
+  ayahStart,
+  ayahEnd,
+  reciterId,
+  reciters,
+  videoSource,
+  subtitleConfig,
+  aspectRatio,
+  resolution,
+  onBack,
+  onStartOver,
+  showSuccess,
+}: ExportScreenProps) {
+  const [rendering, setRendering] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [outputPath, setOutputPath] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-            setStatusMessage('Connecting to spiritual archives...');
-            const audioUrlMap = await getAudioUrlsForChapter(reciter.id, surah.number);
+  const reciter = reciters.find((r) => r.id === reciterId);
 
-            let ayahs: any[] = [];
-            if (subtitleConfig.enabled) {
-                setStatusMessage('Retrieving sacred verses...');
-                ayahs = await getVersesByChapter(surah.number, 'en', `${ayahStart}-${ayahEnd}`);
-            }
+  useEffect(() => {
+    const unlisteners: Array<() => void> = [];
 
-            const audioFiles: string[] = [];
-            for (let i = ayahStart; i <= ayahEnd; i++) {
-                const key = `${surah.number}:${i}`;
-                const url = audioUrlMap.get(key);
-                if (!url) throw new Error(`Missing audio reference for Ayah ${i}`);
-                
-                setStatusMessage(`Downloading Ayah ${i - ayahStart + 1} of ${ayahCount}...`);
-                setProgress(Math.round(((i - ayahStart) / ayahCount) * 30));
-                const localPath = await getCachedAudio(url, reciter.id, surah.number, i);
-                audioFiles.push(localPath);
-            }
+    const setupListeners = async () => {
+      unlisteners.push(
+        await listen<RenderProgress>("render_progress", (event) => {
+          setProgress(event.payload.progress);
+          setStatusMessage(event.payload.message);
+        })
+      );
 
-            setStatus('rendering');
-            setStatusMessage('Crafting your masterpiece...');
-            const outPath = buildOutputPath(surah.number, ayahStart, ayahEnd, reciter.id);
-            
-            await renderVideo({
-                audioFiles,
-                videoFile: videoSource.localPath,
-                outputPath: outPath,
-                aspectRatio,
-                resolution,
-                onProgress: pct => {
-                    const currentProgress = 30 + Math.round(pct * 0.7);
-                    setProgress(currentProgress);
-                },
-                subtitles: subtitleConfig.enabled ? {
-                    enabled: true,
-                    ayahs: ayahs.map((a, i) => ({
-                        arabicText: a.arabicText,
-                        englishTranslation: a.englishTranslation,
-                        audioFile: audioFiles[i],
-                    })),
-                    fontSize: subtitleConfig.fontSize,
-                    color: subtitleConfig.color,
-                    position: subtitleConfig.position,
-                    showTranslation: subtitleConfig.showTranslation,
-                    translationFontSize: subtitleConfig.translationFontSize,
-                } : undefined,
-            });
+      unlisteners.push(
+        await listen<RenderComplete>("render_complete", (event) => {
+          setProgress(100);
+          setStatusMessage("Complete!");
+          setOutputPath(event.payload.output_path);
+          setRendering(false);
+          showSuccess?.("Video exported successfully!");
+        })
+      );
 
-            setOutputPath(outPath);
-            setProgress(100);
-            setStatus('done');
-            setStatusMessage('Creation Complete');
-        } catch (err: any) {
-            setStatus('error');
-            setErrorMessage(err.message || 'The cosmic alignment failed during render.');
-        }
+      unlisteners.push(
+        await listen<RenderError>("render_error", (event) => {
+          setError(event.payload.error);
+          setRendering(false);
+        })
+      );
     };
 
-    const handleShare = async () => {
-        if (!outputPath) return;
-        try {
-            await Share.open({
-                url: `file://${outputPath}`,
-                type: 'video/mp4',
-                title: `Noble Qur'an: ${surah.englishName}`,
-            });
-        } catch (err: any) {
-            if (err.message !== 'User did not share') {
-                Alert.alert('Share Unavailable', err.message);
-            }
-        }
+    setupListeners();
+
+    return () => {
+      unlisteners.forEach((unlisten) => unlisten());
     };
+  }, []);
 
-    const spin = spinAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '360deg'],
-    });
+  const handleStartRender = async () => {
+    try {
+      setRendering(true);
+      setProgress(0);
+      setError(null);
+      setOutputPath(null);
+      setStatusMessage("Starting render...");
 
-    return (
-        <View style={styles.container}>
-            <StatusBar barStyle="light-content" />
-            
-            <View style={styles.header}>
-                {status === 'idle' && (
-                    <Pressable onPress={onBack} style={styles.backBtn}>
-                        <Text style={styles.backIcon}>←</Text>
-                    </Pressable>
-                )}
-                <Text style={styles.title}>Export Creation</Text>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Summary Section */}
-                <View style={styles.glassCard}>
-                    <Text style={styles.sectionTitle}>Video Specification</Text>
-                    <View style={styles.specGrid}>
-                        <View style={styles.specItem}>
-                            <Text style={styles.specLabel}>Surah</Text>
-                            <Text style={styles.specValue} numberOfLines={1}>{surah.englishName}</Text>
-                        </View>
-                        <View style={styles.specItem}>
-                            <Text style={styles.specLabel}>Ayahs</Text>
-                            <Text style={styles.specValue}>{ayahStart}–{ayahEnd}</Text>
-                        </View>
-                        <View style={styles.specItem}>
-                            <Text style={styles.specLabel}>Aspect</Text>
-                            <Text style={styles.specValue}>{aspectRatio}</Text>
-                        </View>
-                        <View style={styles.specItem}>
-                            <Text style={styles.specLabel}>Voice</Text>
-                            <Text style={styles.specValue} numberOfLines={1}>{reciter.name.split('—')[0]}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Main Action / Progress Area */}
-                <View style={styles.mainActionArea}>
-                    {(status === 'downloading_audio' || status === 'rendering') && (
-                        <View style={styles.progressContainer}>
-                            <View style={styles.spinnerWrapper}>
-                                <Animated.View style={[styles.spinner, { transform: [{ rotate: spin }] }]} />
-                                <View style={styles.progressInner}>
-                                    <Text style={styles.progressText}>{progress}%</Text>
-                                </View>
-                            </View>
-                            <Text style={styles.statusMsg}>{statusMessage}</Text>
-                        </View>
-                    )}
-
-                    {status === 'idle' && (
-                        <Pressable style={styles.btnPrimary} onPress={handleExport}>
-                            <Text style={styles.btnPrimaryText}>✨ Begin Generation</Text>
-                        </Pressable>
-                    )}
-
-                    {status === 'done' && (
-                        <View style={styles.doneContainer}>
-                            <View style={styles.successIconWrapper}>
-                                <Text style={styles.successIcon}>✓</Text>
-                            </View>
-                            <Text style={styles.doneTitle}>Masterpiece Ready</Text>
-                            <View style={styles.doneActions}>
-                                <Pressable style={styles.btnPrimary} onPress={handleShare}>
-                                    <Text style={styles.btnPrimaryText}>📤 Share Video</Text>
-                                </Pressable>
-                                <Pressable style={styles.btnSecondary} onPress={onHome}>
-                                    <Text style={styles.btnSecondaryText}>New Creation</Text>
-                                </Pressable>
-                            </View>
-                        </View>
-                    )}
-
-                    {status === 'error' && (
-                        <View style={styles.errorContainer}>
-                            <Text style={styles.errorIcon}>⚠️</Text>
-                            <Text style={styles.errorTitle}>Generation Failed</Text>
-                            <Text style={styles.errorMsg}>{errorMessage}</Text>
-                            <Pressable style={styles.btnSecondary} onPress={() => setStatus('idle')}>
-                                <Text style={styles.btnSecondaryText}>Try Again</Text>
-                            </Pressable>
-                        </View>
-                    )}
-                </View>
-
-                {videoSource.attribution && (
-                    <Text style={styles.attribution}>{videoSource.attribution}</Text>
-                )}
-            </ScrollView>
-        </View>
-    );
-};
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.bgBase,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: spacing.lg,
-        paddingTop: spacing.xl,
-        paddingBottom: spacing.md,
-        gap: spacing.md,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: radius.full,
-        backgroundColor: colors.bgSurface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: colors.borderSubtle,
-    },
-    backIcon: {
-        color: colors.textPrimary,
-        fontSize: 20,
-    },
-    title: {
-        ...typography.h2,
-        color: colors.textPrimary,
-    },
-    scrollContent: {
-        padding: spacing.lg,
-        gap: spacing.xl,
-        paddingBottom: spacing['3xl'],
-    },
-    glassCard: {
-        backgroundColor: colors.glassBase,
-        borderRadius: radius.lg,
-        padding: spacing.lg,
-        borderWidth: 1,
-        borderColor: colors.borderSubtle,
-        gap: spacing.md,
-    },
-    sectionTitle: {
-        ...typography.small,
-        color: colors.accentGold,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    specGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: spacing.md,
-    },
-    specItem: {
-        flex: 1,
-        minWidth: '40%',
-        gap: 2,
-    },
-    specLabel: {
-        ...typography.small,
-        color: colors.textMuted,
-    },
-    specValue: {
-        ...typography.body,
-        color: colors.textPrimary,
-        fontWeight: '600',
-    },
-    mainActionArea: {
-        flex: 1,
-        minHeight: 300,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    btnPrimary: {
-        backgroundColor: colors.accentEmerald,
-        paddingVertical: 18,
-        paddingHorizontal: spacing.xl,
-        borderRadius: radius.md,
-        width: '100%',
-        alignItems: 'center',
-        ...accessibility.minTouchTarget,
-    },
-    btnPrimaryText: {
-        ...typography.bodyLg,
-        color: colors.white,
-        fontWeight: '700',
-    },
-    btnSecondary: {
-        backgroundColor: colors.bgSurfaceElevated,
-        paddingVertical: 14,
-        paddingHorizontal: spacing.xl,
-        borderRadius: radius.md,
-        width: '100%',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: colors.borderHighlight,
-        ...accessibility.minTouchTarget,
-    },
-    btnSecondaryText: {
-        ...typography.body,
-        color: colors.textPrimary,
-        fontWeight: '600',
-    },
-    progressContainer: {
-        alignItems: 'center',
-        gap: spacing.lg,
-    },
-    spinnerWrapper: {
-        width: 140,
-        height: 140,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    spinner: {
-        position: 'absolute',
-        width: 140,
-        height: 140,
-        borderRadius: 70,
-        borderWidth: 3,
-        borderColor: 'transparent',
-        borderTopColor: colors.accentGold,
-        borderRightColor: colors.accentGold,
-    },
-    progressInner: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: colors.bgSurface,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: colors.borderSubtle,
-    },
-    progressText: {
-        ...typography.h1,
-        color: colors.textPrimary,
-    },
-    statusMsg: {
-        ...typography.body,
-        color: colors.textSecondary,
-        fontStyle: 'italic',
-    },
-    doneContainer: {
-        alignItems: 'center',
-        gap: spacing.lg,
-        width: '100%',
-    },
-    successIconWrapper: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: colors.accentEmeraldGlow,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 2,
-        borderColor: colors.accentEmerald,
-    },
-    successIcon: {
-        fontSize: 40,
-        color: colors.accentEmerald,
-        fontWeight: 'bold',
-    },
-    doneTitle: {
-        ...typography.h2,
-        color: colors.textPrimary,
-    },
-    doneActions: {
-        width: '100%',
-        gap: spacing.md,
-    },
-    errorContainer: {
-        alignItems: 'center',
-        gap: spacing.md,
-        width: '100%',
-    },
-    errorIcon: {
-        fontSize: 48,
-    },
-    errorTitle: {
-        ...typography.h3,
-        color: colors.error,
-    },
-    errorMsg: {
-        ...typography.body,
-        color: colors.textMuted,
-        textAlign: 'center',
-        marginBottom: spacing.md,
-    },
-    attribution: {
-        ...typography.small,
-        color: colors.textMuted,
-        textAlign: 'center',
-        fontStyle: 'italic',
+      await invoke<StartRenderResponse>("start_render", {
+        params: {
+          surah_number: surah.number,
+          ayah_range_start: ayahStart,
+          ayah_range_end: ayahEnd,
+          reciter_id: reciterId,
+          video_source: {
+            type: videoSource.type,
+            local_path: videoSource.localPath,
+            stock_video_id: videoSource.stockVideoId,
+            stock_video_url: videoSource.stockVideoUrl,
+            width: videoSource.width,
+            height: videoSource.height,
+            duration: videoSource.duration,
+          },
+          subtitle_config: {
+            enabled: subtitleConfig.enabled,
+            font_size: subtitleConfig.fontSize,
+            arabic_color: subtitleConfig.arabicColor,
+            translation_color: subtitleConfig.translationColor,
+            position: subtitleConfig.position,
+            show_translation: subtitleConfig.showTranslation,
+            translation_font_size: subtitleConfig.translationFontSize,
+            custom_text: subtitleConfig.customText,
+            highlight_color: subtitleConfig.highlightColor,
+          },
+          aspect_ratio: aspectRatio,
+          resolution: resolution,
+        },
+      });
+    } catch (err) {
+      setError(err as string);
+      setRendering(false);
     }
-});
+  };
+
+  const handleCancel = async () => {
+    try {
+      await invoke("cancel_job", { jobId: "current" });
+      setRendering(false);
+      setStatusMessage("Cancelled");
+    } catch (err) {
+      console.error("Cancel failed:", err);
+    }
+  };
+
+  return (
+    <div className="export-screen">
+      <header className="export-header">
+        <button className="back-button" onClick={onBack} disabled={rendering}>
+          ← Back
+        </button>
+        <h1>Export Video</h1>
+      </header>
+
+      <div className="export-content">
+        <section className="summary-section">
+          <h3>Summary</h3>
+          
+          <div className="summary-grid">
+            <div className="summary-item">
+              <span className="summary-label">Surah</span>
+              <span className="summary-value surah-gradient">{surah.englishName} ({surah.number})</span>
+            </div>
+            
+            <div className="summary-item">
+              <span className="summary-label">Ayahs</span>
+              <span className="summary-value">{ayahStart} - {ayahEnd}</span>
+            </div>
+            
+            <div className="summary-item">
+              <span className="summary-label">Reciter</span>
+              <span className="summary-value">{reciter?.name || `ID: ${reciterId}`}</span>
+            </div>
+            
+            <div className="summary-item">
+              <span className="summary-label">Video Source</span>
+              <span className="summary-value">
+                {videoSource.type === "upload" ? "Uploaded" : "Stock"} ({videoSource.width}x{videoSource.height})
+              </span>
+            </div>
+            
+            <div className="summary-item">
+              <span className="summary-label">Subtitles</span>
+              <span className="summary-value">
+                {subtitleConfig.enabled 
+                  ? `Colors (${subtitleConfig.arabicColor}, ${subtitleConfig.translationColor}), ${subtitleConfig.position}${subtitleConfig.showTranslation ? " + translation" : ""}`
+                  : "Disabled"}
+              </span>
+            </div>
+            
+            <div className="summary-item">
+              <span className="summary-label">Output</span>
+              <span className="summary-value">{aspectRatio} @ {resolution}</span>
+            </div>
+          </div>
+        </section>
+
+        {rendering && (
+          <section className="progress-section">
+            <ProgressRing progress={progress} />
+            <p className="status-message">{statusMessage}</p>
+            <button className="cancel-button" onClick={handleCancel}>
+              Cancel
+            </button>
+          </section>
+        )}
+
+        {error && (
+          <section className="error-section">
+            <p className="error-message">{error}</p>
+            <button className="retry-button" onClick={handleStartRender}>
+              Try Again
+            </button>
+          </section>
+        )}
+
+        {outputPath && (
+          <section className="complete-section">
+            <div className="complete-icon">✓</div>
+            <h3>Video Ready!</h3>
+            <p className="output-path">{outputPath}</p>
+            <ShareButton videoPath={outputPath} />
+          </section>
+        )}
+
+        {!rendering && !outputPath && !error && (
+          <section className="action-section">
+            <button className="render-button" onClick={handleStartRender}>
+              Start Rendering
+            </button>
+            <button className="start-over-button" onClick={onStartOver}>
+              Start Over
+            </button>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default ExportScreen;
