@@ -3,6 +3,7 @@ package com.plugin.ffmpeg
 import android.app.Activity
 import android.util.Log
 import app.tauri.annotation.Command
+import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
@@ -13,7 +14,16 @@ import com.arthenica.ffmpegkit.ReturnCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.json.JSONArray
+
+@InvokeArg
+class ExecuteArgs {
+    var args: List<String> = emptyList()
+}
+
+@InvokeArg
+class PathArgs {
+    var path: String = ""
+}
 
 /**
  * Tauri plugin that wraps ffmpeg-kit-android to provide native FFmpeg/FFprobe
@@ -38,12 +48,8 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
     fun execute(invoke: Invoke) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val argsArray = invoke.getArray("args", JSONArray())
-                val argsList = mutableListOf<String>()
-                for (i in 0 until argsArray.length()) {
-                    argsList.add(argsArray.getString(i))
-                }
-                val command = argsList.joinToString(" ") { arg ->
+                val args = invoke.parseArgs(ExecuteArgs::class.java)
+                val command = args.args.joinToString(" ") { arg ->
                     // Quote arguments that contain spaces or special characters
                     if (arg.contains(" ") || arg.contains("'") || arg.contains(";") || arg.contains("[") || arg.contains("(")) {
                         "'" + arg.replace("'", "'\\''") + "'"
@@ -87,7 +93,8 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
     fun getMediaInformation(invoke: Invoke) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val path = invoke.getString("path", "")
+                val args = invoke.parseArgs(PathArgs::class.java)
+                val path = args.path
                 if (path.isNullOrEmpty()) {
                     invoke.reject("Path is required")
                     return@launch
@@ -110,8 +117,8 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
                         for (stream in streams) {
                             val streamType = stream.type
                             if (streamType != null && streamType == "video") {
-                                width = stream.width?.toIntOrNull() ?: 0
-                                height = stream.height?.toIntOrNull() ?: 0
+                                width = stream.width?.toInt() ?: 0
+                                height = stream.height?.toInt() ?: 0
                                 break
                             }
                         }
@@ -149,7 +156,8 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
     fun getDuration(invoke: Invoke) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val path = invoke.getString("path", "")
+                val args = invoke.parseArgs(PathArgs::class.java)
+                val path = args.path
                 if (path.isNullOrEmpty()) {
                     invoke.reject("Path is required")
                     return@launch
