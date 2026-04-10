@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      HAS_SIGNING_SECRETS: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
     
     steps:
       - name: Checkout repository
@@ -58,6 +60,19 @@ jobs:
           # Satisfy Windows identifiers if checked by Tauri
           touch src-tauri/ffmpeg-x86_64-pc-windows-msvc.exe
           touch src-tauri/ffprobe-x86_64-pc-windows-msvc.exe
+
+      - name: Setup Android Signing
+        if: env.HAS_SIGNING_SECRETS == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "storeFile=my-release-key.jks" > src-tauri/gen/android/keystore.properties
+          echo "password=$ANDROID_KEYSTORE_PASSWORD" >> src-tauri/gen/android/keystore.properties
+          echo "keyAlias=$ANDROID_KEY_ALIAS" >> src-tauri/gen/android/keystore.properties
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > src-tauri/gen/android/my-release-key.jks
 
       - name: Build Android APK
         env:

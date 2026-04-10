@@ -16,6 +16,7 @@ pub struct VideoFileInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PexelsVideoPicture {
     pub id: u32,
     pub picture: String,
@@ -23,6 +24,7 @@ pub struct PexelsVideoPicture {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PexelsVideoFile {
     pub id: u32,
     pub quality: String,
@@ -33,6 +35,7 @@ pub struct PexelsVideoFile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PexelsVideo {
     pub id: u32,
     pub user_name: String,
@@ -69,6 +72,7 @@ impl From<pexels::PexelsVideo> for PexelsVideo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchPexelsResponse {
     pub videos: Vec<PexelsVideo>,
     pub total_results: u32,
@@ -114,8 +118,6 @@ pub async fn search_pexels_videos(
     resolution: String,
     per_page: Option<u32>,
 ) -> Result<SearchPexelsResponse, String> {
-    let _ = resolution;
-
     let api_key = storage::get_pexels_api_key(&app)
         .await?
         .ok_or_else(|| "API_KEY_NOT_SET".to_string())?;
@@ -123,7 +125,41 @@ pub async fn search_pexels_videos(
     let orientation = pexels::get_orientation(&aspect_ratio);
     let per_page = per_page.unwrap_or(20);
 
-    let response = pexels::search_videos(&api_key, &query, orientation, per_page).await?;
+    // Randomize page (1-4) using timestamp for variety
+    let page = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0) % 4) as u32 + 1;
+
+    // Map resolution to pixel filters
+    let mut min_width = None;
+    let mut min_height = None;
+
+    let target_pixels = match resolution.as_str() {
+        "1080p" => 1920,
+        _ => 1280, // Default 720p
+    };
+
+    match aspect_ratio.as_str() {
+        "16:9" => min_width = Some(target_pixels),
+        "9:16" | "4:5" => min_height = Some(target_pixels),
+        "1:1" => {
+            let square_pixels = if target_pixels == 1920 { 1080 } else { 720 };
+            min_width = Some(square_pixels);
+            min_height = Some(square_pixels);
+        }
+        _ => {}
+    }
+
+    let response = pexels::search_videos(
+        &api_key, 
+        &query, 
+        orientation, 
+        min_width, 
+        min_height, 
+        page, 
+        per_page
+    ).await?;
 
     Ok(SearchPexelsResponse {
         videos: response.videos.into_iter().map(|v| v.into()).collect(),

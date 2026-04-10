@@ -1,6 +1,6 @@
 pub mod models;
 
-#[cfg(mobile)]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 mod mobile;
 
 use tauri::{
@@ -8,10 +8,10 @@ use tauri::{
     Runtime,
 };
 
-#[cfg(mobile)]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 use tauri::Manager;
 
-#[cfg(mobile)]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 pub use mobile::Ffmpeg;
 
 /// Error types for the FFmpeg plugin.
@@ -30,7 +30,7 @@ pub enum Error {
     PluginInvoke(String),
 }
 
-#[cfg(mobile)]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 impl From<tauri::plugin::mobile::PluginInvokeError> for Error {
     fn from(e: tauri::plugin::mobile::PluginInvokeError) -> Self {
         Error::PluginInvoke(e.to_string())
@@ -52,14 +52,14 @@ impl From<Error> for String {
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("ffmpeg")
         .setup(|app, api| {
-            #[cfg(mobile)]
+            #[cfg(any(target_os = "android", target_os = "ios"))]
             {
                 let handle = mobile::init(app, api)?;
                 app.manage(handle);
             }
 
             // Desktop: nothing to set up here; FFmpegService uses sidecars directly.
-            #[cfg(not(mobile))]
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {
                 let _ = (app, api);
             }

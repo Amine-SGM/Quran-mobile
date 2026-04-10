@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PexelsVideoPicture {
     pub id: u32,
     pub picture: String,
@@ -8,6 +9,7 @@ pub struct PexelsVideoPicture {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PexelsVideoFile {
     pub id: u32,
     pub quality: String,
@@ -18,6 +20,7 @@ pub struct PexelsVideoFile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PexelsVideo {
     pub id: u32,
     pub user_name: String,
@@ -29,6 +32,7 @@ pub struct PexelsVideo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchPexelsResponse {
     pub videos: Vec<PexelsVideo>,
     pub total_results: u32,
@@ -44,8 +48,8 @@ struct PexelsApiResponse {
 struct PexelsApiVideo {
     id: u32,
     user: PexelsApiUser,
-    duration: f64,
-    video_pictures: Vec<PexelsApiPicture>,
+    duration: Option<f64>,
+    video_pictures: Option<Vec<PexelsApiPicture>>,
     video_files: Vec<PexelsApiFile>,
 }
 
@@ -58,38 +62,50 @@ struct PexelsApiUser {
 struct PexelsApiPicture {
     id: u32,
     picture: String,
-    nr: u32,
+    nr: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 struct PexelsApiFile {
     id: u32,
-    quality: String,
-    file_type: String,
-    width: u32,
-    height: u32,
+    quality: Option<String>,
+    file_type: Option<String>,
+    width: Option<u32>,
+    height: Option<u32>,
     link: String,
 }
 
-const PEXELS_API_BASE: &str = "https://api.pexels.com/videos";
+const PEXELS_API_BASE: &str = "https://api.pexels.com/videos/search";
 
 pub async fn search_videos(
     api_key: &str,
     query: &str,
     orientation: Option<&str>,
+    min_width: Option<u32>,
+    min_height: Option<u32>,
+    page: u32,
     per_page: u32,
 ) -> Result<SearchPexelsResponse, String> {
     let client = reqwest::Client::new();
 
     let mut url = format!(
-        "{}?query={}&per_page={}",
+        "{}?query={}&per_page={}&page={}",
         PEXELS_API_BASE,
         urlencoding::encode(query),
-        per_page
+        per_page,
+        page
     );
 
     if let Some(orient) = orientation {
         url.push_str(&format!("&orientation={}", orient));
+    }
+
+    if let Some(w) = min_width {
+        url.push_str(&format!("&min_width={}", w));
+    }
+
+    if let Some(h) = min_height {
+        url.push_str(&format!("&min_height={}", h));
     }
 
     let response = client
@@ -103,45 +119,52 @@ pub async fn search_videos(
         return Err(format!("API error: HTTP {}", response.status()));
     }
 
-    let data: PexelsApiResponse = response
-        .json()
+    let text = response
+        .text()
         .await
-        .map_err(|e| format!("Parse error: {}", e))?;
+        .map_err(|e| format!("Failed to read response body: {}", e))?;
+
+    let data: PexelsApiResponse = serde_json::from_str(&text)
+        .map_err(|e| format!("Parse error: {}. Response: {}", e, text.chars().take(200).collect::<String>()))?;
 
     let videos: Vec<PexelsVideo> = data
         .videos
         .into_iter()
         .map(|v| {
-            let video_files: Vec<PexelsVideoFile> = v
+            let mut video_files: Vec<PexelsVideoFile> = v
                 .video_files
                 .into_iter()
                 .map(|f| PexelsVideoFile {
                     id: f.id,
-                    quality: f.quality,
-                    file_type: f.file_type,
-                    width: f.width,
-                    height: f.height,
+                    quality: f.quality.unwrap_or_else(|| "unknown".into()),
+                    file_type: f.file_type.unwrap_or_else(|| "unknown".into()),
+                    width: f.width.unwrap_or(0),
+                    height: f.height.unwrap_or(0),
                     link: f.link,
                 })
                 .collect();
 
-            let first_file = video_files.first();
-            let width = first_file.map(|f| f.width).unwrap_or(0);
-            let height = first_file.map(|f| f.height).unwrap_or(0);
+            // Sort files by pixel count descending so the best quality is first
+            video_files.sort_by(|a, b| (b.width * b.height).cmp(&(a.width * a.height)));
+
+            let best_file = video_files.first();
+            let width = best_file.map(|f| f.width).unwrap_or(0);
+            let height = best_file.map(|f| f.height).unwrap_or(0);
 
             PexelsVideo {
                 id: v.id,
                 user_name: v.user.name,
-                duration: v.duration,
+                duration: v.duration.unwrap_or(0.0),
                 width,
                 height,
                 video_pictures: v
                     .video_pictures
+                    .unwrap_or_default()
                     .into_iter()
                     .map(|p| PexelsVideoPicture {
                         id: p.id,
                         picture: p.picture,
-                        nr: p.nr,
+                        nr: p.nr.unwrap_or(0),
                     })
                     .collect(),
                 video_files,
