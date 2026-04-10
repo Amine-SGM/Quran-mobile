@@ -37,7 +37,7 @@ dependencies {
     implementation(project(":tauri-android"))
 
     // FFmpegKit — community-maintained fork with 16KB page-size support
-    implementation("io.github.jamaismagic.ffmpeg:ffmpeg-kit-full-16kb:6.1.7")
+    implementation("io.github.jamaismagic.ffmpeg:ffmpeg-kit-main-full-16kb:6.1.4")
 
     // Kotlin coroutines for async FFmpeg execution
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
