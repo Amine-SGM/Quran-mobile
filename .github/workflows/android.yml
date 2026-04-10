@@ -12,9 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      HAS_SIGNING_SECRETS: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -66,7 +63,7 @@ jobs:
           touch src-tauri/ffprobe-x86_64-pc-windows-msvc.exe
 
       - name: Setup Android Signing
-        if: env.HAS_SIGNING_SECRETS == 'true'
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
