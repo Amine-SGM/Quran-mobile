@@ -50,18 +50,14 @@ jobs:
 
       - name: Prepare Dummy Binaries
         run: |
-          mkdir -p src-tauri/binaries
-          
-          # Host OS binaries required by Tauri build.rs
-          touch src-tauri/binaries/ffmpeg-x86_64-unknown-linux-gnu
-          touch src-tauri/binaries/ffprobe-x86_64-unknown-linux-gnu
-          chmod +x src-tauri/binaries/ff*
-          
-          # Dummy emulator binaries to satisfy Gradle multi-architecture builds
-          touch src-tauri/binaries/ffmpeg-i686-linux-android
-          touch src-tauri/binaries/ffprobe-i686-linux-android
-          touch src-tauri/binaries/ffmpeg-x86_64-linux-android
-          touch src-tauri/binaries/ffprobe-x86_64-linux-android
+          mkdir -p src-tauri
+          touch src-tauri/ffmpeg-aarch64-linux-android
+          touch src-tauri/ffmpeg-armv7-linux-androideabi
+          touch src-tauri/ffprobe-aarch64-linux-android
+          touch src-tauri/ffprobe-armv7-linux-androideabi
+          # Satisfy Windows identifiers if checked by Tauri
+          touch src-tauri/ffmpeg-x86_64-pc-windows-msvc.exe
+          touch src-tauri/ffprobe-x86_64-pc-windows-msvc.exe
 
       - name: Build Android APK
         env:

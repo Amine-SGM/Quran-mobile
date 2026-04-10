@@ -2921,6 +2921,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
+ "tauri-plugin-ffmpeg",
  "tauri-plugin-fs",
  "tauri-plugin-opener",
  "tauri-plugin-shell",
@@ -4086,6 +4087,18 @@ dependencies = [
  "tauri-plugin-fs",
  "thiserror 2.0.18",
  "url",
+]
+
+[[package]]
+name = "tauri-plugin-ffmpeg"
+version = "0.1.0"
+dependencies = [
+ "jni",
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

@@ -1,7 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::AppHandle;
+
+#[cfg(not(target_os = "android"))]
 use tauri_plugin_shell::ShellExt;
+
+#[cfg(target_os = "android")]
+use tauri::Manager;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderConfig {
@@ -35,51 +40,6 @@ pub struct FFmpegService;
 impl FFmpegService {
     pub fn new() -> Self {
         Self
-    }
-
-    pub async fn get_video_dimensions(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32), String> {
-        let sidecar = app.shell().sidecar("ffprobe")
-            .map_err(|e| format!("Failed to create ffprobe sidecar: {}", e))?;
-            
-        let output = sidecar
-
-            .args([
-                "-v",
-                "error",
-                "-select_streams",
-                "v:0",
-                "-show_entries",
-                "stream=width,height",
-                "-of",
-                "csv=s=x:p=0",
-                &path.to_string_lossy(),
-            ])
-            .output()
-            .await
-            .map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
-
-        if !output.status.success() {
-            return Err(format!(
-                "ffprobe failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ));
-        }
-
-        let result = String::from_utf8_lossy(&output.stdout);
-        let dims: Vec<&str> = result.trim().split('x').collect();
-
-        if dims.len() != 2 {
-            return Err(format!("Invalid dimensions format: {}", result));
-        }
-
-        let width = dims[0]
-            .parse::<u32>()
-            .map_err(|_| "Failed to parse width")?;
-        let height = dims[1]
-            .parse::<u32>()
-            .map_err(|_| "Failed to parse height")?;
-
-        Ok((width, height))
     }
 
     /// Build the complete FFmpeg merge command.
@@ -290,6 +250,57 @@ impl FFmpegService {
 
         args
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Desktop implementation — uses shell sidecars (ffmpeg/ffprobe CLIs)
+// ═══════════════════════════════════════════════════════════════════
+#[cfg(not(target_os = "android"))]
+impl FFmpegService {
+    pub async fn get_video_dimensions(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32), String> {
+        let sidecar = app.shell().sidecar("ffprobe")
+            .map_err(|e| format!("Failed to create ffprobe sidecar: {}", e))?;
+            
+        let output = sidecar
+
+            .args([
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "csv=s=x:p=0",
+                &path.to_string_lossy(),
+            ])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute ffprobe: {}", e))?;
+
+        if !output.status.success() {
+            return Err(format!(
+                "ffprobe failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+
+        let result = String::from_utf8_lossy(&output.stdout);
+        let dims: Vec<&str> = result.trim().split('x').collect();
+
+        if dims.len() != 2 {
+            return Err(format!("Invalid dimensions format: {}", result));
+        }
+
+        let width = dims[0]
+            .parse::<u32>()
+            .map_err(|_| "Failed to parse width")?;
+        let height = dims[1]
+            .parse::<u32>()
+            .map_err(|_| "Failed to parse height")?;
+
+        Ok((width, height))
+    }
 
     pub async fn get_duration(&self, app: &AppHandle, path: &PathBuf) -> Result<f64, String> {
         // First try ffprobe for accurate duration
@@ -335,6 +346,14 @@ impl FFmpegService {
     pub async fn execute(&self, app: &AppHandle, args: Vec<String>) -> Result<(), String> {
         eprintln!("[FFmpeg] Running sidecar with args: {}", args.join(" "));
 
+        // Ensure output directory exists (last argument is normally the output path)
+        if let Some(output_path_str) = args.last() {
+            let output_path = std::path::Path::new(output_path_str);
+            if let Some(parent) = output_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+        }
+
         let sidecar = app.shell().sidecar("ffmpeg")
             .map_err(|e| format!("Failed to create ffmpeg sidecar: {}", e))?;
 
@@ -364,6 +383,64 @@ impl FFmpegService {
             let error_msg = extract_ffmpeg_error(&detail);
 
             Err(format!("FFmpeg failed: {}", error_msg))
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Android implementation — uses native ffmpeg-kit via Tauri plugin
+// ═══════════════════════════════════════════════════════════════════
+#[cfg(target_os = "android")]
+impl FFmpegService {
+    pub async fn get_video_dimensions(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32), String> {
+        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+        let info = ffmpeg
+            .get_media_information(path.to_string_lossy().to_string())
+            .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
+
+        if info.width == 0 && info.height == 0 {
+            return Err("No video stream found or failed to probe dimensions".to_string());
+        }
+
+        Ok((info.width, info.height))
+    }
+
+    pub async fn get_duration(&self, app: &AppHandle, path: &PathBuf) -> Result<f64, String> {
+        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+        let resp = ffmpeg
+            .get_duration(path.to_string_lossy().to_string())
+            .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
+
+        if resp.duration > 0.0 {
+            return Ok(resp.duration);
+        }
+
+        // Fallback: estimate from file size (assumes ~128kbps MP3)
+        let metadata =
+            std::fs::metadata(path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
+
+        let file_size = metadata.len() as f64;
+        let avg_bitrate = 128_000.0;
+        let estimated_duration = (file_size * 8.0) / avg_bitrate;
+
+        Ok(estimated_duration.max(1.0))
+    }
+
+    pub async fn execute(&self, app: &AppHandle, args: Vec<String>) -> Result<(), String> {
+        eprintln!("[FFmpeg] Running via ffmpeg-kit with args: {}", args.join(" "));
+
+        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+        let resp = ffmpeg
+            .execute(args)
+            .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
+
+        if resp.return_code == 0 {
+            eprintln!("[FFmpeg] Execution succeeded via ffmpeg-kit");
+            Ok(())
+        } else {
+            let error_msg = extract_ffmpeg_error(&resp.output);
+            eprintln!("[FFmpeg] ffmpeg-kit failed (rc={}): {}", resp.return_code, error_msg);
+            Err(format!("FFmpeg failed (rc={}): {}", resp.return_code, error_msg))
         }
     }
 }

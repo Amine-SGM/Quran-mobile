@@ -5,6 +5,23 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "opener:default",
+    "shell:allow-execute",
+    "shell:allow-spawn",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "ffmpeg",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "ffprobe",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    }
   ]
 }

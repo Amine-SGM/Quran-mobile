@@ -49,3 +49,8 @@ captures/
 specs/
 prd.md
 AGENTS.md
+ffmpeg-binary-req.md
+
+# Sidecar Binaries
+src-tauri/ffmpeg-*
+src-tauri/ffprobe-*

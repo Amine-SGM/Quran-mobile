@@ -35,8 +35,8 @@
       "../public/surahs": "surahs"
     },
     "externalBin": [
-      "binaries/ffmpeg",
-      "binaries/ffprobe"
+      "ffmpeg",
+      "ffprobe"
     ]
   }
 }
