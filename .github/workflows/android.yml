@@ -55,8 +55,12 @@ jobs:
           mkdir -p src-tauri
           touch src-tauri/ffmpeg-aarch64-linux-android
           touch src-tauri/ffmpeg-armv7-linux-androideabi
+          touch src-tauri/ffmpeg-i686-linux-android
+          touch src-tauri/ffmpeg-x86_64-linux-android
           touch src-tauri/ffprobe-aarch64-linux-android
           touch src-tauri/ffprobe-armv7-linux-androideabi
+          touch src-tauri/ffprobe-i686-linux-android
+          touch src-tauri/ffprobe-x86_64-linux-android
           # Satisfy Windows identifiers if checked by Tauri
           touch src-tauri/ffmpeg-x86_64-pc-windows-msvc.exe
           touch src-tauri/ffprobe-x86_64-pc-windows-msvc.exe
