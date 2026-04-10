@@ -1,15 +1,29 @@
-use tauri::{plugin::PluginApi, AppHandle, Runtime};
+use tauri::{
+    plugin::{PluginApi, PluginHandle},
+    AppHandle, Runtime,
+};
 
 use crate::models::*;
 
-/// Handle to the FFmpeg mobile plugin, wrapping the Tauri PluginApi.
-pub struct Ffmpeg<R: Runtime>(pub(crate) PluginApi<R, ()>);
+#[cfg(target_os = "android")]
+const PLUGIN_IDENTIFIER: &str = "com.plugin.ffmpeg";
+
+#[cfg(target_os = "ios")]
+tauri::ios_plugin_binding!(init_plugin_ffmpeg);
+
+/// Handle to the FFmpeg mobile plugin, wrapping the Tauri PluginHandle.
+pub struct Ffmpeg<R: Runtime>(pub(crate) PluginHandle<R>);
 
 pub fn init<R: Runtime>(
     _app: &AppHandle<R>,
     api: PluginApi<R, ()>,
 ) -> crate::Result<Ffmpeg<R>> {
-    Ok(Ffmpeg(api))
+    #[cfg(target_os = "android")]
+    let handle = api.register_android_plugin(PLUGIN_IDENTIFIER, "FfmpegPlugin")?;
+    #[cfg(target_os = "ios")]
+    let handle = api.register_ios_plugin(init_plugin_ffmpeg)?;
+    
+    Ok(Ffmpeg(handle))
 }
 
 impl<R: Runtime> Ffmpeg<R> {
