@@ -1,5 +1,5 @@
 include ':app'
 include ':tauri-plugin-ffmpeg'
-project(':tauri-plugin-ffmpeg').projectDir = new File('../tauri-plugin-ffmpeg/android')
+project(':tauri-plugin-ffmpeg').projectDir = new File('../../tauri-plugin-ffmpeg/android')
 
 apply from: 'tauri.settings.gradle'
