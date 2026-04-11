@@ -13,6 +13,9 @@ val tauriProperties = Properties().apply {
     }
 }
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val hasReleaseKeystore = keystorePropertiesFile.exists()
+
 android {
     compileSdk = 36
     namespace = "com.amine.tauri"
@@ -26,14 +29,17 @@ android {
     }
     signingConfigs {
         create("release") {
-            val keystorePropertiesFile = rootProject.file("keystore.properties")
             val keystoreProperties = Properties()
-            if (keystorePropertiesFile.exists()) {
-                keystoreProperties.load(file("../keystore.properties").inputStream())
+            if (hasReleaseKeystore) {
+                keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
                 keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["password"] as String
                 storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["password"] as String
+                storePassword =
+                    keystoreProperties.getProperty("storePassword")
+                        ?: keystoreProperties.getProperty("password")
+                keyPassword =
+                    keystoreProperties.getProperty("keyPassword")
+                        ?: keystoreProperties.getProperty("password")
             }
         }
     }
@@ -51,7 +57,9 @@ android {
         }
         getByName("release") {
             isMinifyEnabled = true
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
@@ -64,6 +72,14 @@ android {
     }
     buildFeatures {
         buildConfig = true
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            isUniversalApk = false
+        }
     }
 }
 

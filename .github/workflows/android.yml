@@ -13,7 +13,7 @@ jobs:
     permissions:
       contents: write
     env:
-      HAS_SIGNING_SECRETS: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      HAS_SIGNING_SECRETS: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
     
     steps:
       - name: Checkout repository
@@ -74,7 +74,8 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           echo "storeFile=$RUNNER_TEMP/my-release-key.jks" > src-tauri/gen/android/keystore.properties
-          echo "password=$ANDROID_KEYSTORE_PASSWORD" >> src-tauri/gen/android/keystore.properties
+          echo "storePassword=$ANDROID_KEYSTORE_PASSWORD" >> src-tauri/gen/android/keystore.properties
+          echo "keyPassword=$ANDROID_KEY_PASSWORD" >> src-tauri/gen/android/keystore.properties
           echo "keyAlias=$ANDROID_KEY_ALIAS" >> src-tauri/gen/android/keystore.properties
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/my-release-key.jks"
 
@@ -83,15 +84,39 @@ jobs:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: npm run tauri android build -- --apk
 
+      - name: Collect Release APKs
+        run: |
+          mkdir -p android-release-apks
+          shopt -s nullglob
+          apk_count=0
+
+          for apk in src-tauri/gen/android/app/build/outputs/apk/release/*.apk; do
+            if [ "$HAS_SIGNING_SECRETS" = "true" ] && [[ "$apk" == *-unsigned.apk ]]; then
+              continue
+            fi
+
+            cp "$apk" android-release-apks/
+            apk_count=$((apk_count + 1))
+          done
+
+          if [ "$apk_count" -eq 0 ]; then
+            if [ "$HAS_SIGNING_SECRETS" = "true" ]; then
+              echo "Signing secrets were provided, but no signed release APKs were produced."
+            else
+              echo "No release APKs were produced."
+            fi
+            exit 1
+          fi
+
       - name: Upload APKs (Artifact)
         uses: actions/upload-artifact@v4
         with:
           name: app-android-apks
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: android-release-apks/*.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          files: android-release-apks/*.apk
           generate_release_notes: true

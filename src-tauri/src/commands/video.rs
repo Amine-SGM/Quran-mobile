@@ -54,19 +54,27 @@ impl From<pexels::PexelsVideo> for PexelsVideo {
             duration: v.duration,
             width: v.width,
             height: v.height,
-            video_pictures: v.video_pictures.into_iter().map(|p| PexelsVideoPicture {
-                id: p.id,
-                picture: p.picture,
-                nr: p.nr,
-            }).collect(),
-            video_files: v.video_files.into_iter().map(|f| PexelsVideoFile {
-                id: f.id,
-                quality: f.quality,
-                file_type: f.file_type,
-                width: f.width,
-                height: f.height,
-                link: f.link,
-            }).collect(),
+            video_pictures: v
+                .video_pictures
+                .into_iter()
+                .map(|p| PexelsVideoPicture {
+                    id: p.id,
+                    picture: p.picture,
+                    nr: p.nr,
+                })
+                .collect(),
+            video_files: v
+                .video_files
+                .into_iter()
+                .map(|f| PexelsVideoFile {
+                    id: f.id,
+                    quality: f.quality,
+                    file_type: f.file_type,
+                    width: f.width,
+                    height: f.height,
+                    link: f.link,
+                })
+                .collect(),
         }
     }
 }
@@ -97,7 +105,7 @@ pub async fn select_video_file(app: AppHandle) -> Result<VideoFileInfo, String> 
     match file_path {
         Some(path) => {
             let path_buf = PathBuf::from(path.to_string());
-            let info = video_service::get_video_metadata(&path_buf)?;
+            let info = video_service::get_video_metadata(&app, &path_buf).await?;
             Ok(VideoFileInfo {
                 path: info.path,
                 width: info.width,
@@ -129,7 +137,9 @@ pub async fn search_pexels_videos(
     let page = (std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis())
-        .unwrap_or(0) % 4) as u32 + 1;
+        .unwrap_or(0)
+        % 4) as u32
+        + 1;
 
     // Map resolution to pixel filters
     let mut min_width = None;
@@ -152,14 +162,15 @@ pub async fn search_pexels_videos(
     }
 
     let response = pexels::search_videos(
-        &api_key, 
-        &query, 
-        orientation, 
-        min_width, 
-        min_height, 
-        page, 
-        per_page
-    ).await?;
+        &api_key,
+        &query,
+        orientation,
+        min_width,
+        min_height,
+        page,
+        per_page,
+    )
+    .await?;
 
     Ok(SearchPexelsResponse {
         videos: response.videos.into_iter().map(|v| v.into()).collect(),
@@ -182,7 +193,7 @@ pub async fn download_stock_video(
 
     let file_path = storage::download_video(&video_url, cache_dir, &filename).await?;
 
-    let metadata = video_service::get_video_metadata(&file_path)?;
+    let metadata = video_service::get_video_metadata(&app, &file_path).await?;
 
     Ok(StockVideoResponse {
         cache_path: file_path.to_string_lossy().to_string(),
