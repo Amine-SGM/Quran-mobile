@@ -36,7 +36,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -82,7 +82,7 @@ jobs:
       - name: Build Android APK
         env:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        run: npm run tauri android build -- --apk
+        run: npm run tauri android build -- --apk --target aarch64
 
       - name: Collect Release APKs
         run: |

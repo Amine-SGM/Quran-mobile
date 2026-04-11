@@ -226,3 +226,23 @@
   color: #888;
   margin-bottom: 8px;
 }
+
+.custom-text-input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #1A1A1A;
+  color: #FFFFFF !important; /* Force white text */
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.custom-text-input:focus {
+  border-color: #ffd700;
+}
+
+.custom-text-input::placeholder {
+  color: #555;
+}

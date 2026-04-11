@@ -358,15 +358,7 @@ export function OutputSettingsScreen({
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
                   placeholder="E.g. @QuranMobile"
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid #333',
-                    background: '#1A1A1A',
-                    color: '#FFF',
-                    fontSize: '14px',
-                  }}
+                  className="custom-text-input"
                 />
               </div>
             </div>
