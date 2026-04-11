@@ -82,7 +82,7 @@ jobs:
       - name: Build Android APK
         env:
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-        run: npm run tauri android build -- --apk --target aarch64
+        run: npm run tauri android build -- --apk --target aarch64 --split-per-abi
 
       - name: Collect Release APKs
         run: |
@@ -90,7 +90,12 @@ jobs:
           shopt -s nullglob
           apk_count=0
 
-          for apk in src-tauri/gen/android/app/build/outputs/apk/release/*.apk; do
+          apk_paths=(
+            src-tauri/gen/android/app/build/outputs/apk/release/*.apk
+            src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
+          )
+
+          for apk in "${apk_paths[@]}"; do
             if [ "$HAS_SIGNING_SECRETS" = "true" ] && [[ "$apk" == *-unsigned.apk ]]; then
               continue
             fi
