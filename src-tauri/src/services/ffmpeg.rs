@@ -6,7 +6,7 @@ use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
 #[cfg(target_os = "android")]
-use tauri::Manager;
+use tauri::{Manager, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderConfig {
@@ -36,6 +36,14 @@ pub struct RenderConfig {
 }
 
 pub struct FFmpegService;
+
+#[cfg(target_os = "android")]
+#[derive(Debug, Clone, Copy)]
+pub struct MediaProbeInfo {
+    pub width: u32,
+    pub height: u32,
+    pub duration: f64,
+}
 
 impl FFmpegService {
     pub fn new() -> Self {
@@ -257,12 +265,17 @@ impl FFmpegService {
 // ═══════════════════════════════════════════════════════════════════
 #[cfg(not(target_os = "android"))]
 impl FFmpegService {
-    pub async fn get_video_dimensions(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32), String> {
-        let sidecar = app.shell().sidecar("ffprobe")
+    pub async fn get_video_dimensions(
+        &self,
+        app: &AppHandle,
+        path: &PathBuf,
+    ) -> Result<(u32, u32), String> {
+        let sidecar = app
+            .shell()
+            .sidecar("ffprobe")
             .map_err(|e| format!("Failed to create ffprobe sidecar: {}", e))?;
-            
-        let output = sidecar
 
+        let output = sidecar
             .args([
                 "-v",
                 "error",
@@ -304,9 +317,11 @@ impl FFmpegService {
 
     pub async fn get_duration(&self, app: &AppHandle, path: &PathBuf) -> Result<f64, String> {
         // First try ffprobe for accurate duration
-        let sidecar = app.shell().sidecar("ffprobe")
+        let sidecar = app
+            .shell()
+            .sidecar("ffprobe")
             .map_err(|e| format!("Failed to create ffprobe sidecar: {}", e))?;
-            
+
         let output = sidecar
             .args([
                 "-v",
@@ -354,7 +369,9 @@ impl FFmpegService {
             }
         }
 
-        let sidecar = app.shell().sidecar("ffmpeg")
+        let sidecar = app
+            .shell()
+            .sidecar("ffmpeg")
             .map_err(|e| format!("Failed to create ffmpeg sidecar: {}", e))?;
 
         // Note: We don't pipe stdin here since sidecar output handles it differently
@@ -392,44 +409,60 @@ impl FFmpegService {
 // ═══════════════════════════════════════════════════════════════════
 #[cfg(target_os = "android")]
 impl FFmpegService {
-    pub async fn get_video_dimensions(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32), String> {
-        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+    pub async fn probe_media(
+        &self,
+        app: &AppHandle,
+        path: &PathBuf,
+    ) -> Result<MediaProbeInfo, String> {
+        let ffmpeg = android_ffmpeg_plugin(app)?;
         let info = ffmpeg
             .get_media_information(path.to_string_lossy().to_string())
             .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
 
         if info.width == 0 && info.height == 0 {
-            return Err("No video stream found or failed to probe dimensions".to_string());
+            return Err("No video stream found or failed to probe media information".to_string());
         }
 
+        let duration = if info.duration > 0.0 {
+            info.duration
+        } else {
+            // Preserve the existing best-effort fallback if FFprobeKit returns no duration.
+            let metadata = std::fs::metadata(path)
+                .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+
+            let file_size = metadata.len() as f64;
+            let avg_bitrate = 128_000.0;
+            let estimated_duration = (file_size * 8.0) / avg_bitrate;
+            estimated_duration.max(1.0)
+        };
+
+        Ok(MediaProbeInfo {
+            width: info.width,
+            height: info.height,
+            duration,
+        })
+    }
+
+    pub async fn get_video_dimensions(
+        &self,
+        app: &AppHandle,
+        path: &PathBuf,
+    ) -> Result<(u32, u32), String> {
+        let info = self.probe_media(app, path).await?;
         Ok((info.width, info.height))
     }
 
     pub async fn get_duration(&self, app: &AppHandle, path: &PathBuf) -> Result<f64, String> {
-        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
-        let resp = ffmpeg
-            .get_duration(path.to_string_lossy().to_string())
-            .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
-
-        if resp.duration > 0.0 {
-            return Ok(resp.duration);
-        }
-
-        // Fallback: estimate from file size (assumes ~128kbps MP3)
-        let metadata =
-            std::fs::metadata(path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
-
-        let file_size = metadata.len() as f64;
-        let avg_bitrate = 128_000.0;
-        let estimated_duration = (file_size * 8.0) / avg_bitrate;
-
-        Ok(estimated_duration.max(1.0))
+        Ok(self.probe_media(app, path).await?.duration)
     }
 
     pub async fn execute(&self, app: &AppHandle, args: Vec<String>) -> Result<(), String> {
-        eprintln!("[FFmpeg] Running via ffmpeg-kit with args: {}", args.join(" "));
+        eprintln!(
+            "[FFmpeg] Running via ffmpeg-kit with args: {}",
+            args.join(" ")
+        );
 
-        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+        let ffmpeg = android_ffmpeg_plugin(app)?;
         let resp = ffmpeg
             .execute(args)
             .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
@@ -439,10 +472,24 @@ impl FFmpegService {
             Ok(())
         } else {
             let error_msg = extract_ffmpeg_error(&resp.output);
-            eprintln!("[FFmpeg] ffmpeg-kit failed (rc={}): {}", resp.return_code, error_msg);
-            Err(format!("FFmpeg failed (rc={}): {}", resp.return_code, error_msg))
+            eprintln!(
+                "[FFmpeg] ffmpeg-kit failed (rc={}): {}",
+                resp.return_code, error_msg
+            );
+            Err(format!(
+                "FFmpeg failed (rc={}): {}",
+                resp.return_code, error_msg
+            ))
         }
     }
+}
+
+#[cfg(target_os = "android")]
+fn android_ffmpeg_plugin<'a>(
+    app: &'a AppHandle,
+) -> Result<State<'a, tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>, String> {
+    app.try_state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>()
+        .ok_or_else(|| "FFmpeg plugin is not initialized".to_string())
 }
 
 impl Default for FFmpegService {

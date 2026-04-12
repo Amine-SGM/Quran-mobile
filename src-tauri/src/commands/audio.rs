@@ -20,8 +20,9 @@ pub async fn download_audio(
         .app_cache_dir()
         .map_err(|e| format!("Failed to get cache dir: {}", e))?;
 
-    let response = audio_service::download_audio(&app, reciter_id, surah_number, ayah_number, cache_dir)
-        .await?;
+    let response =
+        audio_service::download_audio(&app, reciter_id, surah_number, ayah_number, cache_dir)
+            .await?;
 
     Ok(DownloadAudioResponse {
         cache_path: response.cache_path,

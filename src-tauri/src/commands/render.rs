@@ -111,9 +111,15 @@ pub async fn start_render(
             .map(|d| d.join("surahs").join(&surah_image_filename));
 
         // Fall back to the project's public/ directory (dev mode)
-        let dev_path = std::env::var("CARGO_MANIFEST_DIR")
-            .ok()
-            .map(|d| PathBuf::from(d).parent().unwrap_or(std::path::Path::new(".")).to_path_buf().join("public").join("surahs").join(&surah_image_filename));
+        let dev_path = std::env::var("CARGO_MANIFEST_DIR").ok().map(|d| {
+            PathBuf::from(d)
+                .parent()
+                .unwrap_or(std::path::Path::new("."))
+                .to_path_buf()
+                .join("public")
+                .join("surahs")
+                .join(&surah_image_filename)
+        });
 
         match (resource_path, dev_path) {
             (Some(p), _) if p.exists() => Some(p),

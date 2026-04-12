@@ -1,10 +1,19 @@
+#[cfg(target_os = "android")]
+use crate::services::cache;
 use crate::services::pexels;
 use crate::services::storage;
 use crate::services::video as video_service;
 use serde::{Deserialize, Serialize};
+#[cfg(target_os = "android")]
+use std::io;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, FilePath};
+#[cfg(target_os = "android")]
+use tauri_plugin_fs::{FsExt, OpenOptions};
+use tokio::sync::oneshot;
+#[cfg(target_os = "android")]
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoFileInfo {
@@ -96,15 +105,11 @@ pub struct StockVideoResponse {
 
 #[tauri::command]
 pub async fn select_video_file(app: AppHandle) -> Result<VideoFileInfo, String> {
-    let file_path = app
-        .dialog()
-        .file()
-        .add_filter("Video Files", &["mp4", "mov", "avi", "mkv", "webm"])
-        .blocking_pick_file();
+    let file_path = pick_video_file(&app).await?;
 
     match file_path {
         Some(path) => {
-            let path_buf = PathBuf::from(path.to_string());
+            let path_buf = prepare_selected_video_path(&app, path)?;
             let info = video_service::get_video_metadata(&app, &path_buf).await?;
             Ok(VideoFileInfo {
                 path: info.path,
@@ -116,6 +121,66 @@ pub async fn select_video_file(app: AppHandle) -> Result<VideoFileInfo, String> 
         }
         None => Err("CANCELLED".to_string()),
     }
+}
+
+async fn pick_video_file(app: &AppHandle) -> Result<Option<FilePath>, String> {
+    let (tx, rx) = oneshot::channel();
+
+    app.dialog()
+        .file()
+        .add_filter("Video Files", &["mp4", "mov", "avi", "mkv", "webm"])
+        .pick_file(move |file_path| {
+            let _ = tx.send(file_path);
+        });
+
+    rx.await
+        .map_err(|_| "Failed to receive selected file from picker".to_string())
+}
+
+#[cfg(not(target_os = "android"))]
+fn prepare_selected_video_path(_app: &AppHandle, file_path: FilePath) -> Result<PathBuf, String> {
+    file_path
+        .into_path()
+        .map_err(|e| format!("Failed to resolve selected file path: {}", e))
+}
+
+#[cfg(target_os = "android")]
+fn prepare_selected_video_path(app: &AppHandle, file_path: FilePath) -> Result<PathBuf, String> {
+    let cache_dir = cache::get_cache_dir(app)?;
+    let uploads_dir = cache_dir.join("selected-videos");
+    std::fs::create_dir_all(&uploads_dir)
+        .map_err(|e| format!("Failed to create selected video cache dir: {}", e))?;
+
+    let extension = selected_video_extension(&file_path);
+    let staged_path = uploads_dir.join(format!("selected_{}.{}", Uuid::new_v4(), extension));
+
+    let mut source = app
+        .fs()
+        .open(file_path, OpenOptions::new())
+        .map_err(|e| format!("Failed to open selected video: {}", e))?;
+    let mut destination = std::fs::File::create(&staged_path)
+        .map_err(|e| format!("Failed to create staged video file: {}", e))?;
+
+    io::copy(&mut source, &mut destination)
+        .map_err(|e| format!("Failed to copy selected video into app cache: {}", e))?;
+
+    Ok(staged_path)
+}
+
+#[cfg(target_os = "android")]
+fn selected_video_extension(file_path: &FilePath) -> String {
+    let extension = match file_path {
+        FilePath::Path(path) => path.extension().and_then(|ext| ext.to_str()),
+        FilePath::Url(url) => url
+            .path_segments()
+            .and_then(|segments| segments.last())
+            .and_then(|name| name.rsplit_once('.').map(|(_, ext)| ext)),
+    };
+
+    extension
+        .filter(|ext| !ext.is_empty())
+        .unwrap_or("mp4")
+        .to_ascii_lowercase()
 }
 
 #[tauri::command]

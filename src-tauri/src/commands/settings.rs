@@ -71,11 +71,21 @@ pub async fn set_settings(app: AppHandle, params: SetSettingsParams) -> Result<(
     }
 
     if let Some(auto_cleanup) = params.auto_cleanup {
-        storage::set_setting(&app, "auto_cleanup", if auto_cleanup { "true" } else { "false" }).await?;
+        storage::set_setting(
+            &app,
+            "auto_cleanup",
+            if auto_cleanup { "true" } else { "false" },
+        )
+        .await?;
     }
 
     if let Some(show_preview) = params.show_video_preview {
-        storage::set_setting(&app, "show_video_preview", if show_preview { "true" } else { "false" }).await?;
+        storage::set_setting(
+            &app,
+            "show_video_preview",
+            if show_preview { "true" } else { "false" },
+        )
+        .await?;
     }
 
     Ok(())
@@ -84,7 +94,7 @@ pub async fn set_settings(app: AppHandle, params: SetSettingsParams) -> Result<(
 #[tauri::command]
 pub async fn get_cache_stats(app: AppHandle) -> Result<CacheStatsResponse, String> {
     let stats = cache::get_cache_stats(&app)?;
-    
+
     Ok(CacheStatsResponse {
         total_files: stats.total_files,
         total_size_bytes: stats.total_size_bytes,

@@ -1,7 +1,7 @@
-use crate::services::ffmpeg::{FFmpegService, RenderConfig};
-use crate::services::subtitle::{SubtitleService, SubtitleRenderConfig};
-use crate::services::quran;
 use crate::services::audio;
+use crate::services::ffmpeg::{FFmpegService, RenderConfig};
+use crate::services::quran;
+use crate::services::subtitle::{SubtitleRenderConfig, SubtitleService};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -147,12 +147,18 @@ pub async fn start_render(
 
         match quran::fetch_ayahs(config.surah_number, Some("en".to_string())).await {
             Ok(ayahs) => {
-                let filtered: Vec<_> = ayahs.into_iter()
-                    .filter(|a| a.number >= config.ayah_range_start && a.number <= config.ayah_range_end)
+                let filtered: Vec<_> = ayahs
+                    .into_iter()
+                    .filter(|a| {
+                        a.number >= config.ayah_range_start && a.number <= config.ayah_range_end
+                    })
                     .collect();
-                
+
                 let arabic: Vec<String> = filtered.iter().map(|a| a.arabic_text.clone()).collect();
-                let trans: Vec<Option<String>> = filtered.iter().map(|a| a.english_translation.clone()).collect();
+                let trans: Vec<Option<String>> = filtered
+                    .iter()
+                    .map(|a| a.english_translation.clone())
+                    .collect();
                 (arabic, trans)
             }
             Err(e) => return Err(format!("Failed to fetch ayahs: {}", e)),
@@ -165,7 +171,9 @@ pub async fn start_render(
     update_job_progress(&job_id, 10);
     emit_progress(&app, &job_id, 10, "Downloading audio...");
 
-    let cache_dir = app.path().app_cache_dir()
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
         .map_err(|e| format!("Failed to get cache dir: {}", e))?;
 
     let audio_results = match audio::download_audio_range(
@@ -174,8 +182,10 @@ pub async fn start_render(
         config.surah_number,
         config.ayah_range_start,
         config.ayah_range_end,
-        cache_dir
-    ).await {
+        cache_dir,
+    )
+    .await
+    {
         Ok(results) => results,
         Err(e) => {
             fail_job(&job_id, format!("Audio download failed: {}", e));
@@ -184,23 +194,22 @@ pub async fn start_render(
         }
     };
 
-    let chapter_word_timings = match quran::fetch_chapter_word_timings(
-        config.reciter_id,
-        config.surah_number,
-    )
-    .await
-    {
-        Ok(timings) => timings,
-        Err(error) => {
-            eprintln!(
-                "[Subtitles] Failed to fetch chapter timings for reciter {} surah {}: {}",
-                config.reciter_id, config.surah_number, error
-            );
-            HashMap::new()
-        }
-    };
+    let chapter_word_timings =
+        match quran::fetch_chapter_word_timings(config.reciter_id, config.surah_number).await {
+            Ok(timings) => timings,
+            Err(error) => {
+                eprintln!(
+                    "[Subtitles] Failed to fetch chapter timings for reciter {} surah {}: {}",
+                    config.reciter_id, config.surah_number, error
+                );
+                HashMap::new()
+            }
+        };
 
-    config.audio_paths = audio_results.iter().map(|r| PathBuf::from(&r.cache_path)).collect();
+    config.audio_paths = audio_results
+        .iter()
+        .map(|r| PathBuf::from(&r.cache_path))
+        .collect();
 
     // ── Step 3: Generate subtitles if enabled ─────────────────
     if config.subtitle_enabled && !final_arabic.is_empty() {
@@ -218,19 +227,19 @@ pub async fn start_render(
             let result = audio_results.get(i);
             let verse_number = config.ayah_range_start + i as u32;
             let verse_key = format!("{}:{}", config.surah_number, verse_number);
-            
+
             let raw_word_timings = chapter_word_timings
                 .get(&verse_key)
                 .cloned()
                 .or_else(|| result.and_then(|r| r.word_timings.clone()));
 
-            let word_timings = raw_word_timings
-                .map(|timings| {
-                    // Shift timings by current_time so they are relative to the video start
-                    timings.into_iter()
-                        .map(|(s, e)| (s + current_time, e + current_time))
-                        .collect()
-                });
+            let word_timings = raw_word_timings.map(|timings| {
+                // Shift timings by current_time so they are relative to the video start
+                timings
+                    .into_iter()
+                    .map(|(s, e)| (s + current_time, e + current_time))
+                    .collect()
+            });
 
             lines.push(crate::services::subtitle::SubtitleLine {
                 arabic_text: text.clone(),
@@ -285,23 +294,32 @@ pub async fn start_render(
 }
 
 fn emit_progress(app: &AppHandle, job_id: &str, progress: u32, message: &str) {
-    let _ = app.emit("render_progress", serde_json::json!({
-        "job_id": job_id,
-        "progress": progress,
-        "message": message,
-    }));
+    let _ = app.emit(
+        "render_progress",
+        serde_json::json!({
+            "job_id": job_id,
+            "progress": progress,
+            "message": message,
+        }),
+    );
 }
 
 fn emit_complete(app: &AppHandle, job_id: &str, output_path: String) {
-    let _ = app.emit("render_complete", serde_json::json!({
-        "job_id": job_id,
-        "output_path": output_path,
-    }));
+    let _ = app.emit(
+        "render_complete",
+        serde_json::json!({
+            "job_id": job_id,
+            "output_path": output_path,
+        }),
+    );
 }
 
 fn emit_error(app: &AppHandle, job_id: &str, error: String) {
-    let _ = app.emit("render_error", serde_json::json!({
-        "job_id": job_id,
-        "error": error,
-    }));
+    let _ = app.emit(
+        "render_error",
+        serde_json::json!({
+            "job_id": job_id,
+            "error": error,
+        }),
+    );
 }

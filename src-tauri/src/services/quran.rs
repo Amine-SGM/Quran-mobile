@@ -131,10 +131,7 @@ async fn api_get<T: serde::de::DeserializeOwned>(url: &str) -> Result<T, String>
         .map_err(|e| format!("Network error: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!(
-            "Quran.com API error: HTTP {}",
-            response.status()
-        ));
+        return Err(format!("Quran.com API error: HTTP {}", response.status()));
     }
 
     response
@@ -192,10 +189,7 @@ pub async fn fetch_surah_name(surah_number: u32) -> Result<String, String> {
 }
 
 /// Fetch ayahs for a chapter.
-pub async fn fetch_ayahs(
-    surah_number: u32,
-    language: Option<String>,
-) -> Result<Vec<Ayah>, String> {
+pub async fn fetch_ayahs(surah_number: u32, language: Option<String>) -> Result<Vec<Ayah>, String> {
     let lang = language.unwrap_or_else(|| "en".to_string());
     let url = format!(
         "{}/verses/by_chapter/{}?language={}&fields=text_uthmani&translations=20&per_page=300",
@@ -244,11 +238,7 @@ pub async fn fetch_reciters() -> Result<Vec<Reciter>, String> {
         .map(|r| {
             let base_name = r
                 .reciter_name
-                .or_else(|| {
-                    r.translated_name
-                        .as_ref()
-                        .and_then(|t| t.name.clone())
-                })
+                .or_else(|| r.translated_name.as_ref().and_then(|t| t.name.clone()))
                 .unwrap_or_default();
 
             let display_name = if let Some(ref style) = r.style {

@@ -19,7 +19,15 @@ pub async fn download_audio(
     cache_dir: PathBuf,
 ) -> Result<DownloadAudioResponse, String> {
     let audio_entries = quran::fetch_audio_urls(reciter_id, surah_number).await?;
-    download_single_audio(app, reciter_id, surah_number, ayah_number, &cache_dir, &audio_entries).await
+    download_single_audio(
+        app,
+        reciter_id,
+        surah_number,
+        ayah_number,
+        &cache_dir,
+        &audio_entries,
+    )
+    .await
 }
 
 /// Download a single audio file for one ayah.
@@ -31,8 +39,7 @@ pub async fn download_single_audio(
     cache_dir: &PathBuf,
     audio_entries: &[quran::AudioFileEntry],
 ) -> Result<DownloadAudioResponse, String> {
-    std::fs::create_dir_all(cache_dir)
-        .map_err(|e| format!("Failed to create cache dir: {}", e))?;
+    std::fs::create_dir_all(cache_dir).map_err(|e| format!("Failed to create cache dir: {}", e))?;
 
     let file_name = format!("audio_{}_{}_{}.mp3", reciter_id, surah_number, ayah_number);
     let file_path = cache_dir.join(&file_name);
@@ -82,8 +89,7 @@ pub async fn download_single_audio(
         .await
         .map_err(|e| format!("Failed to read audio response: {}", e))?;
 
-    std::fs::write(&file_path, &bytes)
-        .map_err(|e| format!("Failed to write audio file: {}", e))?;
+    std::fs::write(&file_path, &bytes).map_err(|e| format!("Failed to write audio file: {}", e))?;
 
     let duration = get_audio_duration_internal(app, &file_path).await?;
 
@@ -105,13 +111,21 @@ pub async fn download_audio_range(
 ) -> Result<Vec<DownloadAudioResponse>, String> {
     // Fetch all audio URLs for the chapter once
     let audio_entries = quran::fetch_audio_urls(reciter_id, surah_number).await?;
-    
+
     let mut results = Vec::new();
     for ayah in start_ayah..=end_ayah {
-        let resp = download_single_audio(app, reciter_id, surah_number, ayah, &cache_dir, &audio_entries).await?;
+        let resp = download_single_audio(
+            app,
+            reciter_id,
+            surah_number,
+            ayah,
+            &cache_dir,
+            &audio_entries,
+        )
+        .await?;
         results.push(resp);
     }
-    
+
     Ok(results)
 }
 

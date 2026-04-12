@@ -124,8 +124,13 @@ pub async fn search_videos(
         .await
         .map_err(|e| format!("Failed to read response body: {}", e))?;
 
-    let data: PexelsApiResponse = serde_json::from_str(&text)
-        .map_err(|e| format!("Parse error: {}. Response: {}", e, text.chars().take(200).collect::<String>()))?;
+    let data: PexelsApiResponse = serde_json::from_str(&text).map_err(|e| {
+        format!(
+            "Parse error: {}. Response: {}",
+            e,
+            text.chars().take(200).collect::<String>()
+        )
+    })?;
 
     let videos: Vec<PexelsVideo> = data
         .videos

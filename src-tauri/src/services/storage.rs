@@ -82,8 +82,7 @@ pub async fn download_video(
 
     let file_path = cache_dir.join(filename);
 
-    std::fs::write(&file_path, &bytes)
-        .map_err(|e| format!("Failed to write file: {}", e))?;
+    std::fs::write(&file_path, &bytes).map_err(|e| format!("Failed to write file: {}", e))?;
 
     Ok(file_path)
 }
