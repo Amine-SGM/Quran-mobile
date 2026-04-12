@@ -14,12 +14,15 @@ tauri::ios_plugin_binding!(init_plugin_ffmpeg);
 /// Handle to the FFmpeg mobile plugin, wrapping the Tauri PluginHandle.
 pub struct Ffmpeg<R: Runtime>(pub(crate) PluginHandle<R>);
 
-pub fn init<R: Runtime>(_app: &AppHandle<R>, api: PluginApi<R, ()>) -> crate::Result<Ffmpeg<R>> {
+pub fn init<R: Runtime>(
+    _app: &AppHandle<R>,
+    api: PluginApi<R, ()>,
+) -> crate::Result<Ffmpeg<R>> {
     #[cfg(target_os = "android")]
     let handle = api.register_android_plugin(PLUGIN_IDENTIFIER, "FfmpegPlugin")?;
     #[cfg(target_os = "ios")]
     let handle = api.register_ios_plugin(init_plugin_ffmpeg)?;
-
+    
     Ok(Ffmpeg(handle))
 }
 
@@ -45,15 +48,6 @@ impl<R: Runtime> Ffmpeg<R> {
     pub fn get_duration(&self, path: String) -> crate::Result<DurationResponse> {
         self.0
             .run_mobile_plugin("getDuration", DurationRequest { path })
-            .map_err(Into::into)
-    }
-
-    /// Probe a video file using Android's native MediaMetadataRetriever.
-    /// This avoids loading FFmpegKit native libraries, preventing the
-    /// libavdevice.so crash on the `video` variant.
-    pub fn get_video_metadata(&self, path: String) -> crate::Result<MediaInfoResponse> {
-        self.0
-            .run_mobile_plugin("getVideoMetadata", MediaInfoRequest { path })
             .map_err(Into::into)
     }
 }

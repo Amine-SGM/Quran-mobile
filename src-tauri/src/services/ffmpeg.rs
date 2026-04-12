@@ -231,22 +231,14 @@ impl FFmpegService {
         args.push("[outa]".into());
 
         // ── Video encoding ────────────────────────────────────
-        #[cfg(target_os = "android")]
-        {
-            args.push("-c:v".into());
-            args.push("h264_mediacodec".into());
-        }
-        #[cfg(not(target_os = "android"))]
-        {
-            args.push("-c:v".into());
-            args.push("libx264".into());
-            args.push("-preset".into());
-            args.push("medium".into());
-            args.push("-crf".into());
-            args.push("23".into());
-            args.push("-pix_fmt".into());
-            args.push("yuv420p".into());
-        }
+        args.push("-c:v".into());
+        args.push("libx264".into());
+        args.push("-preset".into());
+        args.push("medium".into());
+        args.push("-crf".into());
+        args.push("23".into());
+        args.push("-pix_fmt".into());
+        args.push("yuv420p".into());
 
         // ── Audio encoding ────────────────────────────────────
         args.push("-c:a".into());
@@ -424,8 +416,8 @@ impl FFmpegService {
     ) -> Result<MediaProbeInfo, String> {
         let ffmpeg = android_ffmpeg_plugin(app)?;
         let info = ffmpeg
-            .get_video_metadata(path.to_string_lossy().to_string())
-            .map_err(|e| format!("Video metadata error: {}", e))?;
+            .get_media_information(path.to_string_lossy().to_string())
+            .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
 
         if info.width == 0 && info.height == 0 {
             return Err("No video stream found or failed to probe media information".to_string());
