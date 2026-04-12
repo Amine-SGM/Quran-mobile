@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
+    
     tags:
       - 'v*'
   workflow_dispatch:
@@ -90,13 +90,28 @@ jobs:
           shopt -s nullglob
           apk_count=0
 
+          if [ "$HAS_SIGNING_SECRETS" = "true" ]; then
+            android_sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+            apksigner_path="$(printf '%s\n' "$android_sdk_root"/build-tools/*/apksigner | sort -V | tail -n 1)"
+
+            if [ ! -x "$apksigner_path" ]; then
+              echo "Unable to locate apksigner under Android SDK: $android_sdk_root"
+              exit 1
+            fi
+          fi
+
           apk_paths=(
             src-tauri/gen/android/app/build/outputs/apk/release/*.apk
             src-tauri/gen/android/app/build/outputs/apk/*/release/*.apk
           )
 
           for apk in "${apk_paths[@]}"; do
-            if [ "$HAS_SIGNING_SECRETS" = "true" ] && [[ "$apk" == *-unsigned.apk ]]; then
+            if [[ "$apk" == *-unsigned.apk ]]; then
+              continue
+            fi
+
+            if [ "$HAS_SIGNING_SECRETS" = "true" ] && ! "$apksigner_path" verify "$apk" >/dev/null 2>&1; then
+              echo "Skipping unsigned APK: $apk"
               continue
             fi
 
