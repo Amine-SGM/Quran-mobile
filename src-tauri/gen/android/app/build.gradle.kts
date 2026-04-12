@@ -73,11 +73,6 @@ android {
     buildFeatures {
         buildConfig = true
     }
-    packaging {
-        jniLibs {
-            exclude("**/libavdevice.so")
-        }
-    }
 }
 
 rust {
