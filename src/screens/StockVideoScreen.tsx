@@ -90,9 +90,9 @@ export function StockVideoScreen({
   }
 
   async function handleSelectVideo(video: PexelsVideo) {
-const bestFile = video.videoFiles.find(
-    (f) => f.fileType === "video/mp4"
-  ) || video.videoFiles[0];
+    const bestFile =
+      video.videoFiles.find((f) => f.fileType === "video/mp4") ||
+      video.videoFiles[0];
 
     if (!bestFile) {
       setError("No suitable video file found");
@@ -106,6 +106,9 @@ const bestFile = video.videoFiles.find(
       const response: StockVideoResponse = await invoke("download_stock_video", {
         videoId: video.id,
         videoUrl: bestFile.link,
+        width: bestFile.width || video.width,
+        height: bestFile.height || video.height,
+        duration: video.duration,
       });
 
       const videoSource: VideoSource = {

@@ -154,9 +154,12 @@ fn prepare_selected_video_path(app: &AppHandle, file_path: FilePath) -> Result<P
     let extension = selected_video_extension(&file_path);
     let staged_path = uploads_dir.join(format!("selected_{}.{}", Uuid::new_v4(), extension));
 
+    let mut open_options = OpenOptions::new();
+    open_options.read(true);
+
     let mut source = app
         .fs()
-        .open(file_path, OpenOptions::new())
+        .open(file_path, open_options)
         .map_err(|e| format!("Failed to open selected video: {}", e))?;
     let mut destination = std::fs::File::create(&staged_path)
         .map_err(|e| format!("Failed to create staged video file: {}", e))?;
@@ -248,6 +251,9 @@ pub async fn download_stock_video(
     app: AppHandle,
     video_id: u32,
     video_url: String,
+    width: u32,
+    height: u32,
+    duration: f64,
 ) -> Result<StockVideoResponse, String> {
     let cache_dir = app
         .path()
@@ -258,12 +264,10 @@ pub async fn download_stock_video(
 
     let file_path = storage::download_video(&video_url, cache_dir, &filename).await?;
 
-    let metadata = video_service::get_video_metadata(&app, &file_path).await?;
-
     Ok(StockVideoResponse {
         cache_path: file_path.to_string_lossy().to_string(),
-        width: metadata.width,
-        height: metadata.height,
-        duration: metadata.duration,
+        width,
+        height,
+        duration,
     })
 }

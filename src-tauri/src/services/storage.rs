@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use tauri_plugin_store::StoreExt;
+use tokio::io::AsyncWriteExt;
 
 const PEXELS_KEY_ID: &str = "pexels_api_key";
 const SETTINGS_STORE_PATH: &str = "settings.json";
@@ -72,17 +73,28 @@ pub async fn download_video(
         return Err(format!("Download failed: HTTP {}", response.status()));
     }
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
-
     std::fs::create_dir_all(&cache_dir)
         .map_err(|e| format!("Failed to create cache dir: {}", e))?;
 
     let file_path = cache_dir.join(filename);
+    let mut file = tokio::fs::File::create(&file_path)
+        .await
+        .map_err(|e| format!("Failed to create video file: {}", e))?;
 
-    std::fs::write(&file_path, &bytes).map_err(|e| format!("Failed to write file: {}", e))?;
+    let mut response = response;
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|e| format!("Failed to read download chunk: {}", e))?
+    {
+        file.write_all(&chunk)
+            .await
+            .map_err(|e| format!("Failed to write video file: {}", e))?;
+    }
+
+    file.flush()
+        .await
+        .map_err(|e| format!("Failed to flush video file: {}", e))?;
 
     Ok(file_path)
 }

@@ -1,6 +1,7 @@
 package com.plugin.ffmpeg
 
 import android.app.Activity
+import android.media.MediaMetadataRetriever
 import android.util.Log
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -177,6 +178,42 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
             } catch (e: Exception) {
                 Log.e(TAG, "Duration error", e)
                 invoke.reject("Duration error: ${e.message}")
+            }
+        }
+    }
+
+    @Command
+    fun getVideoMetadata(invoke: Invoke) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val args = invoke.parseArgs(PathArgs::class.java)
+                val path = args.path
+                if (path.isNullOrEmpty()) {
+                    invoke.reject("Path is required")
+                    return@launch
+                }
+
+                Log.d(TAG, "Getting video metadata via MediaMetadataRetriever for: $path")
+
+                val retriever = MediaMetadataRetriever()
+                retriever.setDataSource(path)
+
+                val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+                val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+                val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toDoubleOrNull()?.div(1000.0) ?: 0.0
+
+                retriever.release()
+
+                val ret = JSObject()
+                ret.put("width", width)
+                ret.put("height", height)
+                ret.put("duration", duration)
+
+                Log.d(TAG, "Video metadata: ${width}x${height}, duration=${duration}s")
+                invoke.resolve(ret)
+            } catch (e: Exception) {
+                Log.e(TAG, "Video metadata error", e)
+                invoke.reject("Video metadata error: ${e.message}")
             }
         }
     }
