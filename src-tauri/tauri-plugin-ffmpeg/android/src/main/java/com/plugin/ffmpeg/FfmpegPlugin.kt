@@ -9,7 +9,6 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import com.arthenica.ffmpegkit.FFmpegKit
-import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.arthenica.ffmpegkit.FFprobeKit
 import com.arthenica.ffmpegkit.ReturnCode
 import kotlinx.coroutines.CoroutineScope
@@ -32,23 +31,6 @@ class PathArgs {
  */
 @TauriPlugin
 class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
-
-    init {
-        FFmpegKitConfig.setLibraryLoader { libraryName ->
-            if (libraryName == "avdevice") {
-                Log.d(TAG, "Skipping libavdevice loading as requested.")
-                true
-            } else {
-                try {
-                    System.loadLibrary(libraryName)
-                    true
-                } catch (e: Throwable) {
-                    Log.e(TAG, "Failed to load library: $libraryName", e)
-                    false
-                }
-            }
-        }
-    }
 
     companion object {
         private const val TAG = "FfmpegPlugin"
