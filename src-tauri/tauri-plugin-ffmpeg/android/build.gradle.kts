@@ -36,8 +36,11 @@ dependencies {
     // Tauri plugin API (provided by the host app)
     implementation(project(":tauri-android"))
 
-    // FFmpegKit — community-maintained fork with 16KB page-size support
-    implementation("io.github.jamaismagic.ffmpeg:ffmpeg-kit-main-full-16kb:6.1.4")
+    // FFmpegKit — LTS full-gpl variant: 16KB page-size aligned, includes libass/fribidi/x264
+    // Using LTS instead of main-full to avoid the PLATFORM_hid_write symbol error in libavdevice.so
+    // The main-full variant compiles libavdevice with hidapi which references symbols missing on Android.
+    // The lts-full-gpl variant does not have this issue.
+    implementation("io.github.jamaismagic.ffmpeg:ffmpeg-kit-lts-full-gpl-16kb:6.1.4")
 
     // Kotlin coroutines for async FFmpeg execution
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
