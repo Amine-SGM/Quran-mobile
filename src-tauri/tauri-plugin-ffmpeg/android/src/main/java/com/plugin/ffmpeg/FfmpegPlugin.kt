@@ -34,6 +34,23 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
 
     companion object {
         private const val TAG = "FfmpegPlugin"
+
+        init {
+            // libavdevice.so (bundled in ffmpeg-kit "full" builds) references
+            // PLATFORM_hid_write at load time for its HID input device support.
+            // That symbol is absent on Android, causing an UnsatisfiedLinkError
+            // before any FFmpeg call is made.
+            //
+            // Solution: preload our stub library here so the symbol is already
+            // present in the process's dynamic symbol table when FFmpegKitConfig's
+            // static initializer eventually loads libffmpegkit.so → libavdevice.so.
+            try {
+                System.loadLibrary("hidapi_stub")
+                Log.d(TAG, "hidapi_stub preloaded successfully")
+            } catch (e: UnsatisfiedLinkError) {
+                Log.w(TAG, "hidapi_stub preload skipped: ${e.message}")
+            }
+        }
     }
 
     /**
