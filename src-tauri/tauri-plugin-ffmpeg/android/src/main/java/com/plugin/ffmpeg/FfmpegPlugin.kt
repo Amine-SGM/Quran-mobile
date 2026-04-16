@@ -76,7 +76,6 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
 
                 Log.d(TAG, "Executing FFmpeg command: ${resolvedArgs.joinToString(" ")}")
 
-                FFmpegKitConfig.setTimeout(300)
                 FFmpegKitConfig.setEnvironmentVariable("FONTCONFIG_PATH", "/dev/null")
 
                 val session = FFmpegKit.execute(resolvedArgs.joinToString(" "))
