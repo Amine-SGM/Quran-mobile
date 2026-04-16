@@ -33,6 +33,7 @@ pub struct RenderConfig {
     pub highlight_color: String,
     pub input_width: Option<u32>,
     pub input_height: Option<u32>,
+    pub fonts_dir: Option<String>,
 }
 
 pub struct FFmpegService;
@@ -183,9 +184,19 @@ impl FFmpegService {
                     .replace(':', "\\:");
 
                 if ext == "ass" || ext == "ssa" {
-                    vf_parts.push(format!("ass={}", path_escaped));
+                    let mut filter = format!("ass={}", path_escaped);
+                    if let Some(ref dir) = config.fonts_dir {
+                        let dir_escaped = dir.replace('\\', "/").replace(':', "\\:");
+                        filter.push_str(&format!(":fontsdir={}", dir_escaped));
+                    }
+                    vf_parts.push(filter);
                 } else {
-                    vf_parts.push(format!("subtitles={}", path_escaped));
+                    let mut filter = format!("subtitles={}", path_escaped);
+                    if let Some(ref dir) = config.fonts_dir {
+                        let dir_escaped = dir.replace('\\', "/").replace(':', "\\:");
+                        filter.push_str(&format!(":fontsdir={}", dir_escaped));
+                    }
+                    vf_parts.push(filter);
                 }
             }
         }

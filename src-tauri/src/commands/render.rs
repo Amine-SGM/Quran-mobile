@@ -146,6 +146,10 @@ pub async fn start_render(
         highlight_color: params.subtitle_config.highlight_color,
         input_width: None,
         input_height: None,
+        #[cfg(target_os = "android")]
+        fonts_dir: Some("/system/fonts".to_string()),
+        #[cfg(not(target_os = "android"))]
+        fonts_dir: None,
     };
 
     let arabic_texts = params.arabic_texts.unwrap_or_default();
