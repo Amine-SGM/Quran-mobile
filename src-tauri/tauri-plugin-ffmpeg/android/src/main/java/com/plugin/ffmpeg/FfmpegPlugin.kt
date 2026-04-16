@@ -75,7 +75,7 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
 
                 Log.d(TAG, "Executing FFmpeg command: ${resolvedArgs.joinToString(" ")}")
 
-                val session = FFmpegKit.executeWithArguments(resolvedArgs)
+                val session = FFmpegKit.execute(resolvedArgs.joinToString(" "))
                 val returnCode = session.returnCode
                 val output = session.allLogsAsString ?: ""
 
