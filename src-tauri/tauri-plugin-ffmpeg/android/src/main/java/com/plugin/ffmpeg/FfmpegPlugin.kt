@@ -72,18 +72,10 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
                 val resolvedArgs = args.args.map { arg ->
                     if (arg.startsWith("content://")) resolvePathForFFmpeg(arg) else arg
                 }
-                val command = resolvedArgs.joinToString(" ") { arg ->
-                    // Quote arguments that contain spaces or special characters
-                    if (arg.contains(" ") || arg.contains("'") || arg.contains(";") || arg.contains("[") || arg.contains("(")) {
-                        "'" + arg.replace("'", "'\\''") + "'"
-                    } else {
-                        arg
-                    }
-                }
 
-                Log.d(TAG, "Executing FFmpeg command: $command")
+                Log.d(TAG, "Executing FFmpeg command: ${resolvedArgs.joinToString(" ")}")
 
-                val session = FFmpegKit.execute(command)
+                val session = FFmpegKit.executeWithArguments(resolvedArgs)
                 val returnCode = session.returnCode
                 val output = session.allLogsAsString ?: ""
 

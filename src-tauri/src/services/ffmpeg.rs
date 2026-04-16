@@ -183,9 +183,9 @@ impl FFmpegService {
                     .replace(':', "\\:");
 
                 if ext == "ass" || ext == "ssa" {
-                    vf_parts.push(format!("ass='{}'", path_escaped));
+                    vf_parts.push(format!("ass={}", path_escaped));
                 } else {
-                    vf_parts.push(format!("subtitles='{}'", path_escaped));
+                    vf_parts.push(format!("subtitles={}", path_escaped));
                 }
             }
         }
