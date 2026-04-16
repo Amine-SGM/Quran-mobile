@@ -1,6 +1,8 @@
 package com.plugin.ffmpeg
 
 import android.app.Activity
+import android.content.ContentResolver
+import android.net.Uri
 import android.util.Log
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -14,6 +16,7 @@ import com.antonkarpenko.ffmpegkit.ReturnCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.File
 
 @InvokeArg
 class ExecuteArgs {
@@ -36,6 +39,23 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
         private const val TAG = "FfmpegPlugin"
     }
 
+    private fun resolvePathForFFmpeg(path: String): String {
+        if (!path.startsWith("content://")) return path
+
+        val uri = Uri.parse(path)
+        val resolver: ContentResolver = activity.contentResolver
+        val tempFile = File.createTempFile("ffmpeg_input_", ".mp4", activity.cacheDir)
+
+        resolver.openInputStream(uri)?.use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        } ?: throw IllegalStateException("Cannot open content URI: $path")
+
+        Log.d(TAG, "Copied content:// URI to temp file: ${tempFile.absolutePath}")
+        return tempFile.absolutePath
+    }
+
     /**
      * Execute an FFmpeg command.
      *
@@ -49,7 +69,10 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val args = invoke.parseArgs(ExecuteArgs::class.java)
-                val command = args.args.joinToString(" ") { arg ->
+                val resolvedArgs = args.args.map { arg ->
+                    if (arg.startsWith("content://")) resolvePathForFFmpeg(arg) else arg
+                }
+                val command = resolvedArgs.joinToString(" ") { arg ->
                     // Quote arguments that contain spaces or special characters
                     if (arg.contains(" ") || arg.contains("'") || arg.contains(";") || arg.contains("[") || arg.contains("(")) {
                         "'" + arg.replace("'", "'\\''") + "'"
@@ -94,12 +117,13 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val args = invoke.parseArgs(PathArgs::class.java)
-                val path = args.path
-                if (path.isNullOrEmpty()) {
+                val rawPath = args.path
+                if (rawPath.isNullOrEmpty()) {
                     invoke.reject("Path is required")
                     return@launch
                 }
 
+                val path = resolvePathForFFmpeg(rawPath)
                 Log.d(TAG, "Getting media information for: $path")
 
                 val session = FFprobeKit.getMediaInformation(path)
@@ -157,12 +181,13 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val args = invoke.parseArgs(PathArgs::class.java)
-                val path = args.path
-                if (path.isNullOrEmpty()) {
+                val rawPath = args.path
+                if (rawPath.isNullOrEmpty()) {
                     invoke.reject("Path is required")
                     return@launch
                 }
 
+                val path = resolvePathForFFmpeg(rawPath)
                 Log.d(TAG, "Getting duration for: $path")
 
                 val session = FFprobeKit.getMediaInformation(path)
