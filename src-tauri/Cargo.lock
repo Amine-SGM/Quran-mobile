@@ -2912,7 +2912,7 @@ dependencies = [
 
 [[package]]
 name = "quran-mobile"
-version = "0.3.3"
+version = "0.3.5"
 dependencies = [
  "lazy_static",
  "reqwest 0.12.28",
