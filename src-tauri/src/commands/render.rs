@@ -150,6 +150,7 @@ pub async fn start_render(
         fonts_dir: Some("/system/fonts".to_string()),
         #[cfg(not(target_os = "android"))]
         fonts_dir: None,
+        total_duration: 0.0,
     };
 
     let arabic_texts = params.arabic_texts.unwrap_or_default();

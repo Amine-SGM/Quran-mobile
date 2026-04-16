@@ -34,6 +34,7 @@ pub struct RenderConfig {
     pub input_width: Option<u32>,
     pub input_height: Option<u32>,
     pub fonts_dir: Option<String>,
+    pub total_duration: f64,
 }
 
 pub struct FFmpegService;
@@ -249,8 +250,14 @@ impl FFmpegService {
         args.push("-b:a".into());
         args.push("192k".into());
 
-        // ── Trim to audio length (video loops infinitely) ─────
-        args.push("-shortest".into());
+        // ── Trim to audio length (explicit duration instead of -shortest) ──
+        // -shortest + -stream_loop -1 causes deadlocks; use -t instead
+        if config.total_duration > 0.0 {
+            args.push("-t".into());
+            args.push(format!("{:.3}", config.total_duration));
+        } else {
+            args.push("-shortest".into());
+        }
 
         // ── Fast-start for web/mobile playback ────────────────
         args.push("-movflags".into());

@@ -11,6 +11,7 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import com.antonkarpenko.ffmpegkit.FFmpegKit
+import com.antonkarpenko.ffmpegkit.FFmpegKitConfig
 import com.antonkarpenko.ffmpegkit.FFprobeKit
 import com.antonkarpenko.ffmpegkit.ReturnCode
 import kotlinx.coroutines.CoroutineScope
@@ -74,6 +75,9 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
                 }
 
                 Log.d(TAG, "Executing FFmpeg command: ${resolvedArgs.joinToString(" ")}")
+
+                FFmpegKitConfig.setTimeout(300)
+                FFmpegKitConfig.setEnvironmentVariable("FONTCONFIG_PATH", "/dev/null")
 
                 val session = FFmpegKit.execute(resolvedArgs.joinToString(" "))
                 val returnCode = session.returnCode

@@ -202,6 +202,9 @@ pub async fn start_render(
 
     config.audio_paths = audio_results.iter().map(|r| PathBuf::from(&r.cache_path)).collect();
 
+    let total_audio_duration: f64 = audio_results.iter().map(|r| r.duration_seconds).sum();
+    config.total_duration = total_audio_duration;
+
     // ── Step 3: Generate subtitles if enabled ─────────────────
     if config.subtitle_enabled && !final_arabic.is_empty() {
         update_job_progress(&job_id, 15);
