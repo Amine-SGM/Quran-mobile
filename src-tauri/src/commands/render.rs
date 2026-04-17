@@ -107,10 +107,10 @@ pub async fn start_render(
     let surah_image_path = {
         #[cfg(target_os = "android")]
         {
-            let resource_url = format!(
-                "asset://localhost/_up_/public/surahs/{}",
-                surah_image_filename
-            );
+let resource_url = format!(
+            "asset://localhost/surahs/{}",
+            surah_image_filename
+        );
             let file_path = FilePath::Url(
                 url::Url::parse(&resource_url)
                     .expect("Failed to parse surah resource URL"),
