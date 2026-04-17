@@ -31,9 +31,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "../public/surahs": "surahs"
-    },
+"resources": ["../public/surahs"],
     "externalBin": [
       "ffmpeg",
       "ffprobe"
