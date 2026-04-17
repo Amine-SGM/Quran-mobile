@@ -107,34 +107,50 @@ pub async fn start_render(
     let surah_image_path = {
         #[cfg(target_os = "android")]
         {
-let resource_url = format!(
-            "asset://localhost/surahs/{}",
-            surah_image_filename
-        );
-            let file_path = FilePath::Url(
-                url::Url::parse(&resource_url)
-                    .expect("Failed to parse surah resource URL"),
-            );
-            eprintln!("[Render] Reading surah resource as URL: {}", resource_url);
-            match app.fs().read(file_path) {
-                Ok(bytes) => {
-                    let cached = cache_dir.join(&surah_image_filename);
-                    match std::fs::write(&cached, &bytes) {
-                        Ok(()) => {
-                            eprintln!("[Render] Cached surah image at: {:?}", cached);
-                            Some(cached)
-                        }
-                        Err(e) => {
-                            eprintln!("[Render] Failed to cache surah image: {}", e);
-                            None
+            let candidate_urls: Vec<&str> = vec![
+                "surahs/",
+                "_up_/public/surahs/",
+                "public/surahs/",
+                "tauri/surahs/",
+                "tauri/_up_/public/surahs/",
+            ];
+
+            let mut result = None;
+            for prefix in &candidate_urls {
+                let resource_url = format!(
+                    "asset://localhost/{}{}",
+                    prefix, surah_image_filename
+                );
+                let file_path = FilePath::Url(
+                    url::Url::parse(&resource_url)
+                        .expect("Failed to parse surah resource URL"),
+                );
+                eprintln!("[Render] Trying surah resource URL: {}", resource_url);
+                match app.fs().read(file_path) {
+                    Ok(bytes) => {
+                        let cached = cache_dir.join(&surah_image_filename);
+                        match std::fs::write(&cached, &bytes) {
+                            Ok(()) => {
+                                eprintln!("[Render] SUCCESS with URL: {} ({} bytes, cached at {:?})", resource_url, bytes.len(), cached);
+                                result = Some(cached);
+                                break;
+                            }
+                            Err(e) => {
+                                eprintln!("[Render] Read OK but failed to cache: {}", e);
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    eprintln!("[Render] Failed to read surah resource: {}", e);
-                    None
+                    Err(e) => {
+                        eprintln!("[Render] Failed: {} — {}", resource_url, e);
+                    }
                 }
             }
+
+            if result.is_none() {
+                eprintln!("[Render] ALL candidate paths failed for surah {}", params.surah_number);
+            }
+
+            result
         }
 
         #[cfg(not(target_os = "android"))]
