@@ -2,8 +2,14 @@ package com.plugin.ffmpeg
 
 import android.app.Activity
 import android.content.ContentResolver
+import android.content.ContentValues
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
+import androidx.core.content.FileProvider
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
@@ -18,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileInputStream
 
 @InvokeArg
 class ExecuteArgs {
@@ -166,11 +173,11 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /**
-     * Get the duration of an audio/video file in seconds.
-     *
-     * Expects JSON payload: { "path": "/absolute/path/to/file" }
-     * Returns: { "duration": 120.5 }
-     */
+      * Get the duration of an audio/video file in seconds.
+      *
+      * Expects JSON payload: { "path": "/absolute/path/to/file" }
+      * Returns: { "duration": 120.5 }
+      */
     @Command
     fun getDuration(invoke: Invoke) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -197,6 +204,136 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
             } catch (e: Exception) {
                 Log.e(TAG, "Duration error", e)
                 invoke.reject("Duration error: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Save a video file to the public gallery (Movies directory) via MediaStore.
+     * On API 29+ uses MediaStore API; on older APIs copies to public Movies folder.
+     *
+     * Expects JSON payload: { "path": "/absolute/path/to/file.mp4" }
+     * Returns: { "galleryPath": "content://media/external/video/media/123" }
+     */
+    @Command
+    fun saveToGallery(invoke: Invoke) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val args = invoke.parseArgs(PathArgs::class.java)
+                val rawPath = args.path
+                if (rawPath.isNullOrEmpty()) {
+                    invoke.reject("Path is required")
+                    return@launch
+                }
+
+                val sourceFile = File(rawPath)
+                if (!sourceFile.exists()) {
+                    invoke.reject("File not found: $rawPath")
+                    return@launch
+                }
+
+                val fileName = "quran_${System.currentTimeMillis()}.mp4"
+                var galleryUri: Uri? = null
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val values = ContentValues().apply {
+                        put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
+                        put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                        put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/QuranShort")
+                        put(MediaStore.Video.Media.IS_PENDING, 1)
+                    }
+
+                    val resolver = activity.contentResolver
+                    galleryUri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
+
+                    if (galleryUri != null) {
+                        resolver.openOutputStream(galleryUri)?.use { out ->
+                            FileInputStream(sourceFile).use { inp -> inp.copyTo(out) }
+                        }
+
+                        val updateValues = ContentValues().apply {
+                            put(MediaStore.Video.Media.IS_PENDING, 0)
+                        }
+                        resolver.update(galleryUri, updateValues, null, null)
+
+                        Log.d(TAG, "Saved to gallery via MediaStore: $galleryUri")
+                    }
+                } else {
+                    val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+                    val quranDir = File(moviesDir, "QuranShort")
+                    if (!quranDir.exists()) quranDir.mkdirs()
+
+                    val destFile = File(quranDir, fileName)
+                    FileInputStream(sourceFile).use { inp ->
+                        destFile.outputStream().use { out -> inp.copyTo(out) }
+                    }
+
+                    val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                    intent.data = Uri.fromFile(destFile)
+                    activity.sendBroadcast(intent)
+
+                    galleryUri = Uri.fromFile(destFile)
+                    Log.d(TAG, "Saved to gallery (legacy): ${destFile.absolutePath}")
+                }
+
+                val ret = JSObject()
+                ret.put("galleryPath", galleryUri?.toString() ?: "")
+                invoke.resolve(ret)
+            } catch (e: Exception) {
+                Log.e(TAG, "Save to gallery error", e)
+                invoke.reject("Save to gallery error: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Share a video file using Android's native share sheet (Intent.ACTION_SEND).
+     * Uses FileProvider to create a content:// URI for the file.
+     *
+     * Expects JSON payload: { "path": "/absolute/path/to/file.mp4" }
+     * Returns: { "shared": true }
+     */
+    @Command
+    fun shareVideo(invoke: Invoke) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val args = invoke.parseArgs(PathArgs::class.java)
+                val rawPath = args.path
+                if (rawPath.isNullOrEmpty()) {
+                    invoke.reject("Path is required")
+                    return@launch
+                }
+
+                val sourceFile = File(rawPath)
+                if (!sourceFile.exists()) {
+                    invoke.reject("File not found: $rawPath")
+                    return@launch
+                }
+
+                val contentUri = FileProvider.getUriForFile(
+                    activity,
+                    "${activity.packageName}.fileprovider",
+                    sourceFile
+                )
+
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "video/mp4"
+                    putExtra(Intent.EXTRA_STREAM, contentUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+
+                val chooserIntent = Intent.createChooser(shareIntent, "Share Video")
+                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                activity.startActivity(chooserIntent)
+
+                Log.d(TAG, "Share intent launched for: $rawPath")
+
+                val ret = JSObject()
+                ret.put("shared", true)
+                invoke.resolve(ret)
+            } catch (e: Exception) {
+                Log.e(TAG, "Share video error", e)
+                invoke.reject("Share video error: ${e.message}")
             }
         }
     }

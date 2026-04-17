@@ -199,3 +199,46 @@ fn get_target_dimensions(aspect_ratio: &str, resolution: &str) -> (u32, u32) {
         _ => (base_height * 9 / 16, base_height),
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SaveToGalleryResponse {
+    pub gallery_path: String,
+}
+
+#[tauri::command]
+pub async fn save_to_gallery(app: AppHandle, path: String) -> Result<SaveToGalleryResponse, String> {
+    #[cfg(target_os = "android")]
+    {
+        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+        let resp = ffmpeg
+            .save_to_gallery(path)
+            .map_err(|e| format!("Save to gallery failed: {}", e))?;
+        Ok(SaveToGalleryResponse {
+            gallery_path: resp.gallery_path,
+        })
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, path);
+        Err("Save to gallery is only supported on Android".to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn share_video(app: AppHandle, path: String) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+        let resp = ffmpeg
+            .share_video(path)
+            .map_err(|e| format!("Share video failed: {}", e))?;
+        Ok(resp.shared)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, path);
+        Err("Share video is only supported on Android".to_string())
+    }
+}

@@ -41,6 +41,8 @@ pub fn run() {
             render::start_render,
             render::get_job_status,
             render::cancel_job,
+            render::save_to_gallery,
+            render::share_video,
             settings::get_settings,
             settings::set_settings,
             settings::get_cache_stats,

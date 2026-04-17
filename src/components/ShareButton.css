@@ -1,3 +1,10 @@
+.share-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
 .share-button {
   display: flex;
   align-items: center;
@@ -15,9 +22,17 @@
   transition: all 0.2s ease;
 }
 
+.share-button.save-button {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
 .share-button:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.share-button.save-button:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .share-button:active:not(:disabled) {

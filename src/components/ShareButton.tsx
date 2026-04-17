@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import "./ShareButton.css";
 
 interface ShareButtonProps {
@@ -6,40 +7,48 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({ videoPath, disabled = false }: ShareButtonProps) {
+  const handleSaveToGallery = async () => {
+    if (!videoPath) return;
+
+    try {
+      await invoke("save_to_gallery", { path: videoPath });
+      alert("Video saved to gallery!");
+    } catch (err) {
+      console.error("Save to gallery failed:", err);
+      alert("Failed to save video to gallery.");
+    }
+  };
+
   const handleShare = async () => {
     if (!videoPath) return;
 
     try {
-      if (navigator.share) {
-        const file = await fetch(videoPath);
-        const blob = await file.blob();
-        const fileObj = new File([blob], "quran_video.mp4", { type: "video/mp4" });
-
-        await navigator.share({
-          files: [fileObj],
-          title: "Quran Short Video",
-          text: "Check out this Quran recitation video!",
-        });
-      } else {
-        alert("Sharing is not supported on this device. The video has been saved to your gallery.");
-      }
+      await invoke("share_video", { path: videoPath });
     } catch (err) {
-      if ((err as Error).name !== "AbortError") {
-        console.error("Share failed:", err);
-        alert("Failed to share video. Please try again.");
-      }
+      console.error("Share failed:", err);
+      alert("Failed to share video.");
     }
   };
 
   return (
-    <button
-      className={`share-button ${disabled ? "disabled" : ""}`}
-      onClick={handleShare}
-      disabled={disabled || !videoPath}
-    >
-      <span className="share-icon">📤</span>
-      <span className="share-label">Share Video</span>
-    </button>
+    <div className="share-button-group">
+      <button
+        className={`share-button ${disabled ? "disabled" : ""}`}
+        onClick={handleShare}
+        disabled={disabled || !videoPath}
+      >
+        <span className="share-icon">📤</span>
+        <span className="share-label">Share Video</span>
+      </button>
+      <button
+        className={`share-button save-button ${disabled ? "disabled" : ""}`}
+        onClick={handleSaveToGallery}
+        disabled={disabled || !videoPath}
+      >
+        <span className="share-icon">💾</span>
+        <span className="share-label">Save to Gallery</span>
+      </button>
+    </div>
   );
 }
 

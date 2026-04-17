@@ -81,6 +81,10 @@ export function ExportScreen({
           setOutputPath(event.payload.output_path);
           setRendering(false);
           showSuccess?.("Video exported successfully!");
+
+          invoke("save_to_gallery", { path: event.payload.output_path }).catch((err) => {
+            console.error("Auto-save to gallery failed:", err);
+          });
         })
       );
 
