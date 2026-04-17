@@ -61,7 +61,7 @@ select {
 
 .back-button {
   position: fixed;
-  top: 16px;
+  top: calc(16px + env(safe-area-inset-top, 0px));
   right: 16px;
   background: rgba(15, 15, 26, 0.8);
   backdrop-filter: blur(8px);

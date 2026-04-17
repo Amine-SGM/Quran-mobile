@@ -391,16 +391,16 @@ export function OutputSettingsScreen({
                       In the name of Allah
                     </span>
                   )}
-                  {customText && (
-                    <span
-                      className="preview-custom-text"
-                      style={{ fontSize: '10px', color: '#FFFFFF', position: 'absolute', bottom: '20px', left: '0', right: '0', textAlign: 'center' }}
-                    >
-                      {customText}
-                    </span>
-                  )}
                 </div>
               </>
+            )}
+            {customText && (
+              <span
+                className="preview-custom-text"
+                style={{ fontSize: '10px', color: '#FFFFFF' }}
+              >
+                {customText}
+              </span>
             )}
           </div>
           <div className="preview-details">

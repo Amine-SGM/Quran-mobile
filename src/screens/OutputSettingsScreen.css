@@ -1,5 +1,6 @@
 .output-settings-screen {
   padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
   min-height: 100vh;
   background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
   color: #ffffff;
@@ -10,11 +11,12 @@
   margin-bottom: 24px;
   text-align: center;
   background: transparent;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .settings-header h1 {
   margin: 8px 0;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 600;
   color: #fff;
 }
@@ -245,4 +247,12 @@
 
 .custom-text-input::placeholder {
   color: #555;
+}
+
+.preview-custom-text {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  text-align: center;
 }
