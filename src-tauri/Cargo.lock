@@ -2927,6 +2927,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-store",
  "tokio",
+ "url",
  "urlencoding",
  "uuid",
 ]
