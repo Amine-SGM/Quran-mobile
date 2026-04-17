@@ -3,6 +3,8 @@ use crate::services::render;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
+#[cfg(target_os = "android")]
+use tauri_plugin_fs::{FilePath, FsExt};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoSource {
@@ -103,22 +105,55 @@ pub async fn start_render(
     // In dev: located at public/surahs/{:03}.png relative to the crate root
     let surah_image_filename = format!("{:03}.png", params.surah_number);
     let surah_image_path = {
-        // Try the bundled resource path first (production)
-        let resource_path = app
-            .path()
-            .resource_dir()
-            .ok()
-            .map(|d| d.join("surahs").join(&surah_image_filename));
+        #[cfg(target_os = "android")]
+        {
+            let resource_url = format!(
+                "asset://localhost/_up_/public/surahs/{}",
+                surah_image_filename
+            );
+            let file_path = FilePath::Url(
+                url::Url::parse(&resource_url)
+                    .expect("Failed to parse surah resource URL"),
+            );
+            eprintln!("[Render] Reading surah resource as URL: {}", resource_url);
+            match app.fs().read(file_path) {
+                Ok(bytes) => {
+                    let cached = cache_dir.join(&surah_image_filename);
+                    match std::fs::write(&cached, &bytes) {
+                        Ok(()) => {
+                            eprintln!("[Render] Cached surah image at: {:?}", cached);
+                            Some(cached)
+                        }
+                        Err(e) => {
+                            eprintln!("[Render] Failed to cache surah image: {}", e);
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[Render] Failed to read surah resource: {}", e);
+                    None
+                }
+            }
+        }
 
-        // Fall back to the project's public/ directory (dev mode)
-        let dev_path = std::env::var("CARGO_MANIFEST_DIR")
-            .ok()
-            .map(|d| PathBuf::from(d).parent().unwrap_or(std::path::Path::new(".")).to_path_buf().join("public").join("surahs").join(&surah_image_filename));
+        #[cfg(not(target_os = "android"))]
+        {
+            let resource_path = app
+                .path()
+                .resource_dir()
+                .ok()
+                .map(|d| d.join("surahs").join(&surah_image_filename));
 
-        match (resource_path, dev_path) {
-            (Some(p), _) if p.exists() => Some(p),
-            (_, Some(p)) if p.exists() => Some(p),
-            _ => None,
+            let dev_path = std::env::var("CARGO_MANIFEST_DIR")
+                .ok()
+                .map(|d| PathBuf::from(d).parent().unwrap_or(std::path::Path::new(".")).to_path_buf().join("public").join("surahs").join(&surah_image_filename));
+
+            match (resource_path, dev_path) {
+                (Some(p), _) if p.exists() => Some(p),
+                (_, Some(p)) if p.exists() => Some(p),
+                _ => None,
+            }
         }
     };
 
