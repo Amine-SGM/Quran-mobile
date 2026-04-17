@@ -84,7 +84,21 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
 
                 Log.d(TAG, "Executing FFmpeg command: ${resolvedArgs.joinToString(" ")}")
 
-                FFmpegKitConfig.setEnvironmentVariable("FONTCONFIG_PATH", "/dev/null")
+                val fontsConf = File(activity.cacheDir, "fontconfig/fonts.conf")
+                fontsConf.parentFile?.mkdirs()
+                fontsConf.writeText("""
+                    <?xml version="1.0"?>
+                    <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+                    <fontconfig>
+                      <dir>/system/fonts</dir>
+                      <alias binding="strong">
+                        <family>Noto Sans Arabic</family>
+                        <prefer><family>Noto Naskh Arabic</family></prefer>
+                      </alias>
+                    </fontconfig>
+                """.trimIndent())
+                FFmpegKitConfig.setEnvironmentVariable("FONTCONFIG_FILE", fontsConf.absolutePath)
+                FFmpegKitConfig.setEnvironmentVariable("FONTCONFIG_PATH", "")
 
                 val session = FFmpegKit.execute(resolvedArgs.joinToString(" "))
                 val returnCode = session.returnCode

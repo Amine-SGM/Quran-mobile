@@ -69,8 +69,8 @@ pub async fn start_render(
 
     let output_dir = app
         .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get data dir: {}", e))?;
+        .app_cache_dir()
+        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
 
     std::fs::create_dir_all(&output_dir)
         .map_err(|e| format!("Failed to create output dir: {}", e))?;

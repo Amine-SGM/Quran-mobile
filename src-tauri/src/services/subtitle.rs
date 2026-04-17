@@ -95,7 +95,7 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
         let highlight_color = hex_to_ass_color(&config.highlight_color);
         styles.push_str(&format!(
             r#"
-Style: Arabic,Noto Sans Arabic,{},{},{},{},{},1,0,0,0,100,100,0,0,1,2,1,2,{},{},{},-1"#,
+Style: Arabic,Noto Naskh Arabic,{},{},{},{},{},1,0,0,0,100,100,0,0,1,2,1,2,{},{},{},-1"#,
             config.font_size,
             arabic_color,
             highlight_color,
@@ -107,7 +107,7 @@ Style: Arabic,Noto Sans Arabic,{},{},{},{},{},1,0,0,0,100,100,0,0,1,2,1,2,{},{},
         ));
         styles.push_str(&format!(
             r#"
-Style: ArabicHighlight,Noto Sans Arabic,{},{},{},{},{},1,0,0,0,100,100,0,0,1,2,1,2,{},{},{},-1"#,
+Style: ArabicHighlight,Noto Naskh Arabic,{},{},{},{},{},1,0,0,0,100,100,0,0,1,2,1,2,{},{},{},-1"#,
             config.font_size,
             highlight_color,
             highlight_color,
@@ -123,7 +123,7 @@ Style: ArabicHighlight,Noto Sans Arabic,{},{},{},{},{},1,0,0,0,100,100,0,0,1,2,1
         if config.show_translation {
             styles.push_str(&format!(
                 r#"
-Style: Translation,Noto Sans Arabic,{},{},{},{},{},0,0,0,0,100,100,0,0,1,2,1,8,{},{},{},1"#,
+Style: Translation,Noto Naskh Arabic,{},{},{},{},{},0,0,0,0,100,100,0,0,1,2,1,8,{},{},{},1"#,
                 config.translation_font_size,
                 translation_color,
                 translation_color,
@@ -138,7 +138,7 @@ Style: Translation,Noto Sans Arabic,{},{},{},{},{},0,0,0,0,100,100,0,0,1,2,1,8,{
         if !config.custom_text.is_empty() {
             styles.push_str(&format!(
                 r#"
-Style: CustomText,Noto Sans Arabic,32,{},{},{},{},0,0,0,0,100,100,0,0,1,2,1,2,{},{},40,1"#,
+Style: CustomText,Noto Naskh Arabic,32,{},{},{},{},0,0,0,0,100,100,0,0,1,2,1,2,{},{},40,1"#,
                 custom_text_color,
                 custom_text_color,
                 outline_color,
@@ -615,8 +615,8 @@ mod tests {
         // The base Arabic style should render in the regular Arabic color.
         assert!(content.contains("Style: Arabic"));
         assert!(content.contains("&H00FFFFFF"));
-        assert!(content.contains("Style: Arabic,Noto Sans Arabic,32,&H00FFFFFF,&H0000D7FF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,2,1,2,90,90,980,-1"));
-        assert!(content.contains("Style: ArabicHighlight,Noto Sans Arabic,32,&H0000D7FF,&H0000D7FF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,2,1,2,90,90,980,-1"));
+        assert!(content.contains("Style: Arabic,Noto Naskh Arabic,32,&H00FFFFFF,&H0000D7FF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,2,1,2,90,90,980,-1"));
+        assert!(content.contains("Style: ArabicHighlight,Noto Naskh Arabic,32,&H0000D7FF,&H0000D7FF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,2,1,2,90,90,980,-1"));
 
         // Standard karaoke tags accumulate highlight across the whole line, which is not the
         // behavior we want. The output should instead create one timed dialogue per active word.
