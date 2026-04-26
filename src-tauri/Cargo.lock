@@ -2912,7 +2912,7 @@ dependencies = [
 
 [[package]]
 name = "quran-mobile"
-version = "0.3.5"
+version = "0.5.0"
 dependencies = [
  "lazy_static",
  "reqwest 0.12.28",
@@ -4422,9 +4422,7 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

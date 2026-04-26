@@ -1,4 +1,4 @@
-package com.amine.tauri
+package com.amine.a_nur
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
