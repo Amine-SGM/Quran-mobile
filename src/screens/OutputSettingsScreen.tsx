@@ -92,10 +92,11 @@ export function OutputSettingsScreen({
 
   return (
     <div className="output-settings-screen">
+      <button className="back-button" onClick={onBack}>
+        ← Back
+      </button>
+
       <header className="settings-header">
-        <button className="back-button" onClick={onBack}>
-          ← Back
-        </button>
         <h1>Video Configuration</h1>
         <p className="selection-info">
           <span className="surah-gradient">Surah {surahNumber}</span>, Ayahs {ayahStart}-{ayahEnd} • Reciter: {reciterId}
@@ -353,12 +354,18 @@ export function OutputSettingsScreen({
               
               <div className="option-group" style={{ marginTop: '16px' }}>
                 <label className="picker-label">Custom Bottom Text</label>
-                <input
-                  type="text"
+                <textarea
                   value={customText}
-                  onChange={(e) => setCustomText(e.target.value)}
+                  onChange={(e) => {
+                    const lines = e.target.value.split('\n');
+                    if (lines.length <= 2) {
+                      setCustomText(e.target.value);
+                    }
+                  }}
                   placeholder="E.g. @QuranMobile"
                   className="custom-text-input"
+                  rows={2}
+                  style={{ resize: 'none' }}
                 />
               </div>
             </div>
@@ -397,7 +404,7 @@ export function OutputSettingsScreen({
             {customText && (
               <span
                 className="preview-custom-text"
-                style={{ fontSize: '10px', color: '#FFFFFF' }}
+                style={{ fontSize: '10px', color: '#FFFFFF', whiteSpace: 'pre-wrap', textAlign: 'center' }}
               >
                 {customText}
               </span>

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-opener";
 import "./ShareButton.css";
 
 interface ShareButtonProps {
@@ -7,15 +8,14 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({ videoPath, disabled = false }: ShareButtonProps) {
-  const handleSaveToGallery = async () => {
+  const handlePlayVideo = async () => {
     if (!videoPath) return;
 
     try {
-      await invoke("save_to_gallery", { path: videoPath });
-      alert("Video saved to gallery!");
+      await open(videoPath);
     } catch (err) {
-      console.error("Save to gallery failed:", err);
-      alert("Failed to save video to gallery.");
+      console.error("Play video failed:", err);
+      alert("Failed to play video.");
     }
   };
 
@@ -41,12 +41,12 @@ export function ShareButton({ videoPath, disabled = false }: ShareButtonProps) {
         <span className="share-label">Share Video</span>
       </button>
       <button
-        className={`share-button save-button ${disabled ? "disabled" : ""}`}
-        onClick={handleSaveToGallery}
+        className={`share-button play-button ${disabled ? "disabled" : ""}`}
+        onClick={handlePlayVideo}
         disabled={disabled || !videoPath}
       >
-        <span className="share-icon">💾</span>
-        <span className="share-label">Save to Gallery</span>
+        <span className="share-icon">▶️</span>
+        <span className="share-label">Play Video</span>
       </button>
     </div>
   );
