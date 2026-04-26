@@ -65,7 +65,16 @@ jobs:
           touch src-tauri/ffmpeg-x86_64-pc-windows-msvc.exe
           touch src-tauri/ffprobe-x86_64-pc-windows-msvc.exe
 
-      - name: Setup Android Signing
+
+
+      - name: Reinitialize Android project
+        env:
+          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          rm -rf src-tauri/gen/android
+          npm run tauri android init
+
+      - name: Setup Android Signing (post-init)
         if: env.HAS_SIGNING_SECRETS == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

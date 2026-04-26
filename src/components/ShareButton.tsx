@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-opener";
+import { openPath } from "@tauri-apps/plugin-opener";
 import "./ShareButton.css";
 
 interface ShareButtonProps {
@@ -12,7 +12,7 @@ export function ShareButton({ videoPath, disabled = false }: ShareButtonProps) {
     if (!videoPath) return;
 
     try {
-      await open(videoPath);
+      await openPath(videoPath);
     } catch (err) {
       console.error("Play video failed:", err);
       alert("Failed to play video.");
