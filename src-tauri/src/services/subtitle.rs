@@ -163,10 +163,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
         let video_end = format_ass_time(total_duration);
 
         if !config.custom_text.is_empty() {
+            // Convert literal newlines to ASS hard line break (\N) so multi-line
+            // custom text actually renders as separate lines in the output video.
+            // Also strip carriage returns from Windows-style \r\n line endings.
+            let ass_custom_text = config.custom_text.replace("\r\n", "\\N").replace('\n', "\\N").replace('\r', "\\N");
             events.push_str(&format!(
                 r#"
 Dialogue: 0,{},{},CustomText,,0,0,0,,{}"#,
-                video_start, video_end, config.custom_text
+                video_start, video_end, ass_custom_text
             ));
         }
 

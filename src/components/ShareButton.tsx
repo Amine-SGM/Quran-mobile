@@ -15,7 +15,7 @@ export function ShareButton({ videoPath, disabled = false }: ShareButtonProps) {
       await openPath(videoPath);
     } catch (err) {
       console.error("Play video failed:", err);
-      alert("Failed to play video.");
+      alert("Failed to play video: " + err);
     }
   };
 
@@ -26,7 +26,7 @@ export function ShareButton({ videoPath, disabled = false }: ShareButtonProps) {
       await invoke("share_video", { path: videoPath });
     } catch (err) {
       console.error("Share failed:", err);
-      alert("Failed to share video.");
+      alert("Failed to share video: " + err);
     }
   };
 
