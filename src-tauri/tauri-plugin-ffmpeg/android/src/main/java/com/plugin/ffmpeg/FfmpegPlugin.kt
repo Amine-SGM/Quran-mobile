@@ -396,4 +396,4 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
     }
  }
 }
-}
+
