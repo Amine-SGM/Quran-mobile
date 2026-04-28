@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
 import "./ShareButton.css";
 
+const isAndroid = /Android/i.test(navigator.userAgent);
+
 interface ShareButtonProps {
   videoPath: string;
   disabled?: boolean;
@@ -12,7 +14,11 @@ export function ShareButton({ videoPath, disabled = false }: ShareButtonProps) {
     if (!videoPath) return;
 
     try {
-      await openPath(videoPath);
+      if (isAndroid) {
+        await invoke("play_video", { path: videoPath });
+      } else {
+        await openPath(videoPath);
+      }
     } catch (err) {
       console.error("Play video failed:", err);
       alert("Failed to play video: " + err);

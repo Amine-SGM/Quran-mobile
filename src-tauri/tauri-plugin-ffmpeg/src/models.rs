@@ -62,3 +62,15 @@ pub struct ShareVideoRequest {
 pub struct ShareVideoResponse {
     pub shared: bool,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayVideoRequest {
+    pub path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayVideoResponse {
+    pub played: bool,
+}

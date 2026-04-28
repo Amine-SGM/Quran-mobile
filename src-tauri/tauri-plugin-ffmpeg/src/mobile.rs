@@ -54,4 +54,11 @@ impl<R: Runtime> Ffmpeg<R> {
             .run_mobile_plugin("shareVideo", ShareVideoRequest { path })
             .map_err(Into::into)
     }
+
+    #[cfg(target_os = "android")]
+    pub fn play_video(&self, path: String) -> crate::Result<PlayVideoResponse> {
+        self.0
+            .run_mobile_plugin("playVideo", PlayVideoRequest { path })
+            .map_err(Into::into)
+    }
 }

@@ -341,15 +341,59 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
                 chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 activity.startActivity(chooserIntent)
 
-                Log.d(TAG, "Share intent launched for: $rawPath")
+        Log.d(TAG, "Share intent launched for: $rawPath")
 
-                val ret = JSObject()
-                ret.put("shared", true)
-                invoke.resolve(ret)
-            } catch (e: Exception) {
-                Log.e(TAG, "Share video error", e)
-                invoke.reject("Share video error: ${e.message}")
+        val ret = JSObject()
+        ret.put("shared", true)
+        invoke.resolve(ret)
+    } catch (e: Exception) {
+        Log.e(TAG, "Share video error", e)
+        invoke.reject("Share video error: ${e.message}")
+    }
+  }
+ }
+
+ @Command
+ fun playVideo(invoke: Invoke) {
+    CoroutineScope(Dispatchers.Main).launch {
+        try {
+            val args = invoke.parseArgs(PathArgs::class.java)
+            val rawPath = args.path
+            if (rawPath.isNullOrEmpty()) {
+                invoke.reject("Path is required")
+                return@launch
             }
+
+            val sourceFile = File(rawPath)
+            if (!sourceFile.exists()) {
+                invoke.reject("File not found: $rawPath")
+                return@launch
+            }
+
+            val contentUri = FileProvider.getUriForFile(
+                activity,
+                "${activity.packageName}.fileprovider",
+                sourceFile
+            )
+
+            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(contentUri, "video/mp4")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            activity.startActivity(viewIntent)
+
+            Log.d(TAG, "Play video intent launched for: $rawPath")
+
+            val ret = JSObject()
+            ret.put("played", true)
+            invoke.resolve(ret)
+        } catch (e: Exception) {
+            Log.e(TAG, "Play video error", e)
+            invoke.reject("Play video error: ${e.message}")
         }
     }
+ }
+}
 }

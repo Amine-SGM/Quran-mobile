@@ -269,3 +269,21 @@ pub async fn share_video(app: AppHandle, path: String) -> Result<bool, String> {
         Err("Share video is only supported on Android".to_string())
     }
 }
+
+#[tauri::command]
+pub async fn play_video(app: AppHandle, path: String) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    {
+        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+        let resp = ffmpeg
+            .play_video(path)
+            .map_err(|e| format!("Play video failed: {}", e))?;
+        Ok(resp.played)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, path);
+        Err("Play video is only supported on Android".to_string())
+    }
+}
