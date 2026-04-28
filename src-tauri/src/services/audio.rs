@@ -1,6 +1,7 @@
 use crate::services::quran;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -8,6 +9,32 @@ pub struct DownloadAudioResponse {
     pub cache_path: String,
     pub duration_seconds: f64,
     pub word_timings: Option<Vec<(f64, f64)>>,
+}
+
+pub fn staged_audio_dir(cache_dir: &Path) -> PathBuf {
+    cache_dir.join("staged_reciter_audio")
+}
+
+pub fn clear_staged_audio(cache_dir: &Path) -> Result<(), String> {
+    let staged_dir = staged_audio_dir(cache_dir);
+    if staged_dir.exists() {
+        fs::remove_dir_all(&staged_dir)
+            .map_err(|e| format!("Failed to clear staged audio: {}", e))?;
+    }
+    Ok(())
+}
+
+pub async fn stage_reciter_audio_range(
+    app: &AppHandle,
+    reciter_id: u32,
+    surah_number: u32,
+    start_ayah: u32,
+    end_ayah: u32,
+    cache_dir: PathBuf,
+) -> Result<Vec<DownloadAudioResponse>, String> {
+    clear_staged_audio(&cache_dir)?;
+    let staged_dir = staged_audio_dir(&cache_dir);
+    download_audio_range(app, reciter_id, surah_number, start_ayah, end_ayah, staged_dir).await
 }
 
 /// Download a single audio file for one ayah, fetching audio URLs internally.
@@ -103,16 +130,43 @@ pub async fn download_audio_range(
     end_ayah: u32,
     cache_dir: PathBuf,
 ) -> Result<Vec<DownloadAudioResponse>, String> {
-    // Fetch all audio URLs for the chapter once
     let audio_entries = quran::fetch_audio_urls(reciter_id, surah_number).await?;
-    
+
     let mut results = Vec::new();
     for ayah in start_ayah..=end_ayah {
         let resp = download_single_audio(app, reciter_id, surah_number, ayah, &cache_dir, &audio_entries).await?;
         results.push(resp);
     }
-    
+
     Ok(results)
+}
+
+pub async fn resolve_audio_range(
+    app: &AppHandle,
+    reciter_id: u32,
+    surah_number: u32,
+    start_ayah: u32,
+    end_ayah: u32,
+    cache_dir: PathBuf,
+) -> Result<Vec<DownloadAudioResponse>, String> {
+    let staged_dir = staged_audio_dir(&cache_dir);
+    let mut staged_results = Vec::new();
+
+    for ayah in start_ayah..=end_ayah {
+        let file_path = staged_dir.join(format!("audio_{}_{}_{}.mp3", reciter_id, surah_number, ayah));
+        if !file_path.exists() {
+            return download_audio_range(app, reciter_id, surah_number, start_ayah, end_ayah, cache_dir).await;
+        }
+
+        let duration = get_audio_duration_internal(app, &file_path).await?;
+        staged_results.push(DownloadAudioResponse {
+            cache_path: file_path.to_string_lossy().to_string(),
+            duration_seconds: duration,
+            word_timings: None,
+        });
+    }
+
+    Ok(staged_results)
 }
 
 pub async fn get_audio_duration(app: &AppHandle, file_path: String) -> Result<f64, String> {

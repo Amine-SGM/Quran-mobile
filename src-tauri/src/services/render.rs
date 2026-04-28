@@ -161,26 +161,27 @@ pub async fn start_render(
         (arabic_texts, translations)
     };
 
-    // ── Step 2: Download audio range ───────────────────────────
     update_job_progress(&job_id, 10);
-    emit_progress(&app, &job_id, 10, "Downloading audio...");
+    emit_progress(&app, &job_id, 10, "Preparing audio...");
 
     let cache_dir = app.path().app_cache_dir()
         .map_err(|e| format!("Failed to get cache dir: {}", e))?;
 
-    let audio_results = match audio::download_audio_range(
+    let audio_results = match audio::resolve_audio_range(
         &app,
         config.reciter_id,
         config.surah_number,
         config.ayah_range_start,
         config.ayah_range_end,
-        cache_dir
+        cache_dir.clone()
     ).await {
         Ok(results) => results,
         Err(e) => {
-            fail_job(&job_id, format!("Audio download failed: {}", e));
-            emit_error(&app, &job_id, format!("Audio download failed: {}", e));
-            return Err(format!("Audio download failed: {}", e));
+            let message = format!("Audio preparation failed: {}", e);
+            let _ = audio::clear_staged_audio(&cache_dir);
+            fail_job(&job_id, message.clone());
+            emit_error(&app, &job_id, message.clone());
+            return Err(message);
         }
     };
 
@@ -273,7 +274,7 @@ pub async fn start_render(
 
     let args = ffmpeg.build_merge_command(&config);
 
-    match ffmpeg.execute(&app, args).await {
+    let render_result = match ffmpeg.execute(&app, args).await {
         Ok(()) => {
             complete_job(&job_id, output_path.clone());
             emit_complete(&app, &job_id, output_path.to_string_lossy().to_string());
@@ -284,7 +285,10 @@ pub async fn start_render(
             emit_error(&app, &job_id, e.clone());
             Err(e)
         }
-    }
+    };
+
+    let _ = audio::clear_staged_audio(&cache_dir);
+    render_result
 }
 
 fn emit_progress(app: &AppHandle, job_id: &str, progress: u32, message: &str) {

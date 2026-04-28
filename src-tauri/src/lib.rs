@@ -34,6 +34,8 @@ pub fn run() {
             quran::get_ayahs,
             quran::get_reciters,
             audio::download_audio,
+            audio::stage_reciter_audio,
+            audio::clear_staged_reciter_audio,
             audio::get_audio_duration,
             video::select_video_file,
             video::search_pexels_videos,

@@ -41,6 +41,7 @@ export function ReciterScreen({
     previewAudioUrl,
     selectReciter,
     playPreview,
+    stageSelectedReciterAudio,
     stopPreview,
   } = useReciter();
 
@@ -75,11 +76,11 @@ export function ReciterScreen({
         setPlayingReciterId(null);
       } else {
         stopPreview();
-        playPreview(reciter);
+        void playPreview(reciter, { surahNumber, ayahStart, ayahEnd });
         setPlayingReciterId(reciter.id);
       }
     },
-    [playingReciterId, stopPreview, playPreview]
+    [ayahEnd, ayahStart, playingReciterId, stopPreview, playPreview, surahNumber]
   );
 
   const handleSelectReciter = useCallback(
@@ -93,9 +94,18 @@ export function ReciterScreen({
     [playingReciterId, stopPreview, selectReciter]
   );
 
-  const handleContinue = () => {
-    if (selectedReciter) {
+  const handleContinue = async () => {
+    if (!selectedReciter) return;
+
+    try {
+      await stageSelectedReciterAudio(selectedReciter, {
+        surahNumber,
+        ayahStart,
+        ayahEnd,
+      });
       onContinue(selectedReciter.id);
+    } catch (err) {
+      setError(err as string);
     }
   };
 

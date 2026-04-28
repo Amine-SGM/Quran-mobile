@@ -66,6 +66,8 @@ export function ExportScreen({
   useEffect(() => {
     const unlisteners: Array<() => void> = [];
 
+    const clearStagedAudio = () => invoke("clear_staged_reciter_audio").catch(() => undefined);
+
     const setupListeners = async () => {
       unlisteners.push(
         await listen<RenderProgress>("render_progress", (event) => {
@@ -80,6 +82,7 @@ export function ExportScreen({
           setStatusMessage("Complete!");
           setOutputPath(event.payload.output_path);
           setRendering(false);
+          void clearStagedAudio();
           showSuccess?.("Video exported successfully!");
 
           invoke("save_to_gallery", { path: event.payload.output_path }).catch((err) => {
@@ -92,6 +95,7 @@ export function ExportScreen({
         await listen<RenderError>("render_error", (event) => {
           setError(event.payload.error);
           setRendering(false);
+          void clearStagedAudio();
         })
       );
     };
@@ -150,6 +154,7 @@ export function ExportScreen({
   const handleCancel = async () => {
     try {
       await invoke("cancel_job", { jobId: "current" });
+      await invoke("clear_staged_reciter_audio");
       setRendering(false);
       setStatusMessage("Cancelled");
     } catch (err) {
