@@ -89,6 +89,8 @@ jobs:
           mkdir -p android-release-apks
           shopt -s nullglob
           apk_count=0
+          release_tag="${GITHUB_REF_NAME:-android}"
+          release_name="a-nur ${release_tag}.apk"
 
           if [ "$HAS_SIGNING_SECRETS" = "true" ]; then
             android_sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
@@ -115,8 +117,9 @@ jobs:
               continue
             fi
 
-            cp "$apk" android-release-apks/
+            cp "$apk" "android-release-apks/$release_name"
             apk_count=$((apk_count + 1))
+            break
           done
 
           if [ "$apk_count" -eq 0 ]; then
