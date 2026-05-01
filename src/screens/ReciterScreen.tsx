@@ -43,6 +43,7 @@ export function ReciterScreen({
     playPreview,
     stageSelectedReciterAudio,
     stopPreview,
+    isStagingAudio,
   } = useReciter();
 
   useEffect(() => {
@@ -95,7 +96,10 @@ export function ReciterScreen({
   );
 
   const handleContinue = async () => {
-    if (!selectedReciter) return;
+    if (!selectedReciter || isStagingAudio) return;
+
+    setError(null);
+    onContinue(selectedReciter.id);
 
     try {
       await stageSelectedReciterAudio(selectedReciter, {
@@ -103,9 +107,8 @@ export function ReciterScreen({
         ayahStart,
         ayahEnd,
       });
-      onContinue(selectedReciter.id);
     } catch (err) {
-      setError(err as string);
+      console.error("Background audio staging failed:", err);
     }
   };
 
@@ -177,9 +180,9 @@ export function ReciterScreen({
         <button
           className="continue-button"
           onClick={handleContinue}
-          disabled={!selectedReciter}
+          disabled={!selectedReciter || isStagingAudio}
         >
-          Continue to Output Settings →
+          {isStagingAudio ? "Preparing Audio..." : "Continue to Output Settings →"}
         </button>
       </div>
     </div>

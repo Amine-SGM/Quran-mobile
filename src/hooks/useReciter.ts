@@ -6,6 +6,7 @@ interface ReciterState {
   selectedReciter: Reciter | null;
   isPlaying: boolean;
   previewAudioUrl: string | null;
+  isStagingAudio: boolean;
 }
 
 interface PreviewParams {
@@ -18,6 +19,7 @@ interface UseReciterReturn {
   selectedReciter: Reciter | null;
   isPlaying: boolean;
   previewAudioUrl: string | null;
+  isStagingAudio: boolean;
   selectReciter: (reciter: Reciter) => void;
   clearSelection: () => void;
   playPreview: (reciter: Reciter, params: PreviewParams) => Promise<void>;
@@ -30,6 +32,7 @@ export function useReciter(): UseReciterReturn {
     selectedReciter: null,
     isPlaying: false,
     previewAudioUrl: null,
+    isStagingAudio: false,
   });
 
   const selectReciter = useCallback((reciter: Reciter) => {
@@ -46,6 +49,7 @@ export function useReciter(): UseReciterReturn {
       selectedReciter: null,
       isPlaying: false,
       previewAudioUrl: null,
+      isStagingAudio: false,
     });
   }, []);
 
@@ -83,16 +87,22 @@ export function useReciter(): UseReciterReturn {
   }, []);
 
   const stageSelectedReciterAudio = useCallback(async (reciter: Reciter, params: PreviewParams) => {
-    await invoke("stage_reciter_audio", {
-      reciterId: reciter.id,
-      surahNumber: params.surahNumber,
-      ayahStart: params.ayahStart,
-      ayahEnd: params.ayahEnd,
-      reciter_id: reciter.id,
-      surah_number: params.surahNumber,
-      ayah_start: params.ayahStart,
-      ayah_end: params.ayahEnd,
-    });
+    setState((prev) => ({ ...prev, isStagingAudio: true }));
+
+    try {
+      await invoke("stage_reciter_audio", {
+        reciterId: reciter.id,
+        surahNumber: params.surahNumber,
+        ayahStart: params.ayahStart,
+        ayahEnd: params.ayahEnd,
+        reciter_id: reciter.id,
+        surah_number: params.surahNumber,
+        ayah_start: params.ayahStart,
+        ayah_end: params.ayahEnd,
+      });
+    } finally {
+      setState((prev) => ({ ...prev, isStagingAudio: false }));
+    }
   }, []);
 
   const stopPreview = useCallback(() => {
@@ -106,6 +116,7 @@ export function useReciter(): UseReciterReturn {
     selectedReciter: state.selectedReciter,
     isPlaying: state.isPlaying,
     previewAudioUrl: state.previewAudioUrl,
+    isStagingAudio: state.isStagingAudio,
     selectReciter,
     clearSelection,
     playPreview,
