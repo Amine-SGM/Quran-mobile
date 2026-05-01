@@ -45,11 +45,13 @@ captures/
 
 # Project specifics
 .opencode/
-.spectify/
+.specify/
 specs/
 prd.md
 AGENTS.md
 ffmpeg-binary-req.md
+.agent/
+graphify-out/
 
 # Sidecar Binaries
 src-tauri/ffmpeg-*

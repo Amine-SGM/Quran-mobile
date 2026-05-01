@@ -3,6 +3,13 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Surah } from "../types";
 import "./HomeScreen.css";
 
+const SURAH_CACHE_KEY = "quran_surahs_cache_v1";
+
+interface SurahCachePayload {
+  cachedAt: number;
+  surahs: Surah[];
+}
+
 interface HomeScreenProps {
   onSurahSelect: (surah: Surah) => void;
   onSettings: () => void;
@@ -18,6 +25,45 @@ interface SurahResponse {
   total_ayahs: number;
 }
 
+function isSurah(value: unknown): value is Surah {
+  if (!value || typeof value !== "object") return false;
+  const surah = value as Record<string, unknown>;
+  return (
+    typeof surah.number === "number" &&
+    typeof surah.arabicName === "string" &&
+    typeof surah.englishName === "string" &&
+    typeof surah.englishNameTranslation === "string" &&
+    typeof surah.revelationType === "string" &&
+    (surah.revelationType === "Meccan" || surah.revelationType === "Medinan") &&
+    typeof surah.totalAyahs === "number"
+  );
+}
+
+function readSurahCache(): Surah[] | null {
+  try {
+    const raw = localStorage.getItem(SURAH_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SurahCachePayload>;
+    if (!parsed.surahs || !Array.isArray(parsed.surahs)) return null;
+    const valid = parsed.surahs.filter(isSurah);
+    return valid.length > 0 ? valid : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSurahCache(surahs: Surah[]) {
+  try {
+    const payload: SurahCachePayload = {
+      cachedAt: Date.now(),
+      surahs,
+    };
+    localStorage.setItem(SURAH_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    return;
+  }
+}
+
 export function HomeScreen({ onSurahSelect, onSettings, showError }: HomeScreenProps) {
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,12 +71,23 @@ export function HomeScreen({ onSurahSelect, onSettings, showError }: HomeScreenP
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    loadSurahs();
+    const cached = readSurahCache();
+    const hasCached = Boolean(cached?.length);
+    if (cached) {
+      setSurahs(cached);
+      setError(null);
+      setLoading(false);
+    }
+    loadSurahs({ showLoading: !hasCached, allowCachedFallback: hasCached });
   }, []);
 
-  async function loadSurahs() {
+  async function loadSurahs(options?: { showLoading?: boolean; allowCachedFallback?: boolean }) {
+    const showLoading = options?.showLoading ?? true;
+    const allowCachedFallback = options?.allowCachedFallback ?? false;
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const data: SurahResponse[] = await invoke("get_surahs");
       const transformed: Surah[] = data.map((s) => ({
         number: s.number,
@@ -42,12 +99,17 @@ export function HomeScreen({ onSurahSelect, onSettings, showError }: HomeScreenP
       }));
       setSurahs(transformed);
       setError(null);
+      writeSurahCache(transformed);
     } catch (err) {
       const message = err as string;
-      setError(message);
-      showError?.("Failed to load surahs. Check your connection.");
+      if (!allowCachedFallback) {
+        setError(message);
+        showError?.("Failed to load surahs. Check your connection.");
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }
 
