@@ -1,6 +1,7 @@
 pub mod audio;
 pub mod cache;
 pub mod ffmpeg;
+pub mod pixabay;
 pub mod pexels;
 pub mod quran;
 pub mod render;

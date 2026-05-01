@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use tauri_plugin_store::StoreExt;
 
 const PEXELS_KEY_ID: &str = "pexels_api_key";
+const PIXABAY_KEY_ID: &str = "pixabay_api_key";
 const SETTINGS_STORE_PATH: &str = "settings.json";
 
 pub async fn get_pexels_api_key(app: &tauri::AppHandle) -> Result<Option<String>, String> {
@@ -29,6 +30,34 @@ pub async fn set_pexels_api_key(app: &tauri::AppHandle, key: &str) -> Result<(),
 
 pub async fn has_pexels_api_key(app: &tauri::AppHandle) -> Result<bool, String> {
     let key = get_pexels_api_key(app).await?;
+    Ok(key.is_some() && !key.unwrap().is_empty())
+}
+
+pub async fn get_pixabay_api_key(app: &tauri::AppHandle) -> Result<Option<String>, String> {
+    let store = app
+        .store(SETTINGS_STORE_PATH)
+        .map_err(|e| format!("Store error: {}", e))?;
+
+    let value = store
+        .get(PIXABAY_KEY_ID)
+        .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+    Ok(value)
+}
+
+pub async fn set_pixabay_api_key(app: &tauri::AppHandle, key: &str) -> Result<(), String> {
+    let store = app
+        .store(SETTINGS_STORE_PATH)
+        .map_err(|e| format!("Store error: {}", e))?;
+
+    store.set(PIXABAY_KEY_ID, key);
+    store.save().map_err(|e| format!("Save error: {}", e))?;
+
+    Ok(())
+}
+
+pub async fn has_pixabay_api_key(app: &tauri::AppHandle) -> Result<bool, String> {
+    let key = get_pixabay_api_key(app).await?;
     Ok(key.is_some() && !key.unwrap().is_empty())
 }
 

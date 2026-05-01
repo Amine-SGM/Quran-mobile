@@ -39,6 +39,7 @@ pub fn run() {
             audio::get_audio_duration,
             video::select_video_file,
             video::search_pexels_videos,
+            video::search_pixabay_videos,
             video::download_stock_video,
             render::start_render,
             render::get_job_status,

@@ -5,6 +5,7 @@ use tauri::AppHandle;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub pexels_api_key_set: bool,
+    pub pixabay_api_key_set: bool,
     pub export_resolution: String,
     pub auto_cleanup: bool,
     pub show_video_preview: bool,
@@ -13,6 +14,7 @@ pub struct AppSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetSettingsParams {
     pub pexels_api_key: Option<String>,
+    pub pixabay_api_key: Option<String>,
     pub export_resolution: Option<String>,
     pub auto_cleanup: Option<bool>,
     pub show_video_preview: Option<bool>,
@@ -35,6 +37,7 @@ pub struct CacheStatsResponse {
 #[tauri::command]
 pub async fn get_settings(app: AppHandle) -> Result<AppSettings, String> {
     let pexels_api_key_set = storage::has_pexels_api_key(&app).await?;
+    let pixabay_api_key_set = storage::has_pixabay_api_key(&app).await?;
 
     let export_resolution = storage::get_setting(&app, "export_resolution")
         .await?
@@ -52,6 +55,7 @@ pub async fn get_settings(app: AppHandle) -> Result<AppSettings, String> {
 
     Ok(AppSettings {
         pexels_api_key_set,
+        pixabay_api_key_set,
         export_resolution,
         auto_cleanup,
         show_video_preview,
@@ -61,9 +65,11 @@ pub async fn get_settings(app: AppHandle) -> Result<AppSettings, String> {
 #[tauri::command]
 pub async fn set_settings(app: AppHandle, params: SetSettingsParams) -> Result<(), String> {
     if let Some(key) = params.pexels_api_key {
-        if !key.is_empty() {
-            storage::set_pexels_api_key(&app, &key).await?;
-        }
+        storage::set_pexels_api_key(&app, &key).await?;
+    }
+
+    if let Some(key) = params.pixabay_api_key {
+        storage::set_pixabay_api_key(&app, &key).await?;
     }
 
     if let Some(resolution) = params.export_resolution {

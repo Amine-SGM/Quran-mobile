@@ -73,6 +73,7 @@ export function VideoSourceScreen({
       localPath: videoInfo.path,
       stockVideoId: null,
       stockVideoUrl: null,
+      stockVideoProvider: undefined,
       width: videoInfo.width,
       height: videoInfo.height,
       duration: videoInfo.duration,
@@ -109,7 +110,7 @@ export function VideoSourceScreen({
         <div className="option-section">
           <h2>Stock Video</h2>
           <p className="option-desc">
-            Search Pexels for free stock videos (filtered by {aspectRatio})
+            Search Pexels + Pixabay for free stock videos (filtered by {aspectRatio})
           </p>
           <button className="stock-button" onClick={onStockVideo}>
             Browse Stock Videos

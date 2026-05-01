@@ -126,6 +126,7 @@ export function ExportScreen({
             local_path: videoSource.localPath,
             stock_video_id: videoSource.stockVideoId,
             stock_video_url: videoSource.stockVideoUrl,
+            stock_video_provider: videoSource.stockVideoProvider,
             width: videoSource.width,
             height: videoSource.height,
             duration: videoSource.duration,

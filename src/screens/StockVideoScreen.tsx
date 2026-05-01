@@ -1,9 +1,19 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { AspectRatio, Resolution, PexelsVideo, VideoSource } from "../types";
+import type {
+  AspectRatio,
+  Resolution,
+  PexelsVideo,
+  PixabayVideo,
+  SearchPexelsResponse,
+  SearchPixabayResponse,
+  StockVideoItem,
+  VideoSource,
+} from "../types";
 import { VideoThumbnail } from "../components/VideoThumbnail";
 import { ApiKeyModal } from "../components/ApiKeyModal";
 import { DownloadProgress } from "../components/DownloadProgress";
+import { ToggleSwitch } from "../components/ToggleSwitch";
 import "./StockVideoScreen.css";
 
 interface StockVideoScreenProps {
@@ -15,11 +25,6 @@ interface StockVideoScreenProps {
   resolution: Resolution;
   onBack: () => void;
   onSelect: (videoSource: VideoSource) => void;
-}
-
-interface SearchResponse {
-  videos: PexelsVideo[];
-  total_results: number;
 }
 
 interface StockVideoResponse {
@@ -40,23 +45,39 @@ export function StockVideoScreen({
   onSelect,
 }: StockVideoScreenProps) {
   const [query, setQuery] = useState("");
-  const [videos, setVideos] = useState<PexelsVideo[]>([]);
+  const [allVideos, setAllVideos] = useState<StockVideoItem[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [downloading, setDownloading] = useState<number | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [includeAi, setIncludeAi] = useState(false);
+  const [missingKeys, setMissingKeys] = useState<string[]>([]);
 
   useEffect(() => {
-    checkApiKey();
+    void initializeSearch();
   }, []);
 
-  async function checkApiKey() {
+
+  async function initializeSearch() {
+    await checkApiKeys();
+    await handleSearch();
+  }
+
+  async function checkApiKeys() {
     try {
-      const settings = await invoke<{ pexels_api_key_set: boolean }>("get_settings");
-      if (!settings.pexels_api_key_set) {
-        setShowApiKeyModal(true);
-      }
+      const settings = await invoke<{
+        pexels_api_key_set: boolean;
+        pixabay_api_key_set: boolean;
+      }>("get_settings");
+
+      const missing: string[] = [];
+      if (!settings.pexels_api_key_set) missing.push("Pexels");
+      if (!settings.pixabay_api_key_set) missing.push("Pixabay");
+
+      setMissingKeys(missing);
+      setShowApiKeyModal(missing.length === 2);
     } catch (err) {
       console.error("Failed to check API key:", err);
     }
@@ -69,30 +90,63 @@ export function StockVideoScreen({
       setLoading(true);
       setError(null);
 
-      const response: SearchResponse = await invoke("search_pexels_videos", {
-        query,
-        aspectRatio,
-        resolution,
-        perPage: 20,
-      });
+      const effectiveQuery = query.trim();
+      const resolutionsToTry = getResolutionFallbacks(resolution);
+      let lastMerged: StockVideoItem[] = [];
+      let lastErrors: string[] = [];
 
-      setVideos(response.videos);
+      for (const resolutionToTry of resolutionsToTry) {
+        const [
+          { result: pexelsResult, error: pexelsError },
+          { result: pixabayResult, error: pixabayError },
+        ] = await Promise.all([
+          safeInvoke<SearchPexelsResponse>("search_pexels_videos", {
+            query: effectiveQuery,
+            aspectRatio,
+            resolution: resolutionToTry,
+            perPage: 20,
+          }),
+          safeInvoke<SearchPixabayResponse>("search_pixabay_videos", {
+            query: effectiveQuery,
+            aspectRatio,
+            resolution: resolutionToTry,
+            perPage: 20,
+          }),
+        ]);
+
+        const pexelsVideos = pexelsResult?.videos ?? [];
+        const pixabayVideos = pixabayResult?.videos ?? [];
+        const errors = [pexelsError, pixabayError].filter((msg): msg is string => !!msg);
+
+        if (errors.some((msg) => msg === "API_KEY_NOT_SET" || msg === "PIXABAY_API_KEY_NOT_SET")) {
+          await checkApiKeys();
+        }
+
+        const merged = mergeResults(pexelsVideos, pixabayVideos, resolutionToTry);
+        lastMerged = merged;
+        lastErrors = errors;
+
+        if (merged.length > 0) {
+          setAllVideos(merged);
+          return;
+        }
+      }
+
+      setAllVideos(lastMerged);
+
+      if (lastErrors.length > 0) {
+        setError(lastErrors.map((msg) => normalizeSearchError(msg)).join(" | "));
+      }
     } catch (err) {
       const errMsg = err as string;
-      if (errMsg === "API_KEY_NOT_SET") {
-        setShowApiKeyModal(true);
-      } else {
-        setError(errMsg);
-      }
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleSelectVideo(video: PexelsVideo) {
-const bestFile = video.videoFiles.find(
-    (f) => f.fileType === "video/mp4"
-  ) || video.videoFiles[0];
+  async function handleSelectVideo(video: StockVideoItem) {
+    const bestFile = selectBestFile(video);
 
     if (!bestFile) {
       setError("No suitable video file found");
@@ -100,12 +154,13 @@ const bestFile = video.videoFiles.find(
     }
 
     try {
-      setDownloading(video.id);
+      setDownloading(getDownloadKey(video));
       setDownloadProgress(0);
 
       const response: StockVideoResponse = await invoke("download_stock_video", {
         videoId: video.id,
         videoUrl: bestFile.link,
+        provider: video.provider,
       });
 
       const videoSource: VideoSource = {
@@ -113,6 +168,7 @@ const bestFile = video.videoFiles.find(
         localPath: null,
         stockVideoId: video.id,
         stockVideoUrl: bestFile.link,
+        stockVideoProvider: video.provider,
         width: response.width,
         height: response.height,
         duration: response.duration,
@@ -126,11 +182,18 @@ const bestFile = video.videoFiles.find(
     }
   }
 
-  const handleApiKeySubmit = async (key: string) => {
-    await invoke("set_settings", {
-      params: { pexels_api_key: key },
-    });
+  const handleApiKeySubmit = async (keys: { pexels?: string; pixabay?: string }) => {
+    const params: Record<string, string> = {};
+    if (keys.pexels) {
+      params.pexels_api_key = keys.pexels;
+    }
+    if (keys.pixabay) {
+      params.pixabay_api_key = keys.pixabay;
+    }
+
+    await invoke("set_settings", { params });
     setShowApiKeyModal(false);
+    await checkApiKeys();
     handleSearch();
   };
 
@@ -142,37 +205,54 @@ const bestFile = video.videoFiles.find(
         </button>
         <h1>Stock Videos</h1>
         <p className="search-info">
-          Surah {surahNumber}, Ayahs {ayahStart}-{ayahEnd} • {aspectRatio} @ {resolution}
+          Surah {surahNumber}, Ayahs {ayahStart}-{ayahEnd} • {aspectRatio}
         </p>
       </header>
 
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder={`Search for "${aspectRatio}" videos...`}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-        />
-        <button onClick={handleSearch} disabled={loading}>
-          {loading ? "Searching..." : "Search"}
-        </button>
+      <div className="search-controls">
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Search stock videos..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          />
+          <button onClick={handleSearch} disabled={loading}>
+            {loading ? "Searching..." : "Search"}
+          </button>
+        </div>
+        <div className="search-filters">
+          <ToggleSwitch
+            label="Include AI-generated results"
+            checked={includeAi}
+            onChange={(checked) => {
+              setIncludeAi(checked);
+            }}
+          />
+        </div>
       </div>
+
+      {missingKeys.length === 1 && (
+        <div className="notice-message">
+          {missingKeys[0]} API key not set. Showing results from the other provider.
+        </div>
+      )}
 
       {error && <div className="error-message">{error}</div>}
 
       <div className="video-grid">
-        {videos.map((video) => (
+        {filterAiResults(allVideos, includeAi).map((video) => (
           <VideoThumbnail
-            key={video.id}
+            key={`${video.provider}-${video.id}`}
             video={video}
             onSelect={() => handleSelectVideo(video)}
-            isLoading={downloading === video.id}
+            isLoading={downloading === getDownloadKey(video)}
           />
         ))}
       </div>
 
-      {videos.length === 0 && !loading && query && (
+      {filterAiResults(allVideos, includeAi).length === 0 && !loading && query && (
         <div className="empty-state">
           <p>No videos found. Try a different search term.</p>
         </div>
@@ -183,10 +263,123 @@ const bestFile = video.videoFiles.find(
       )}
 
       {showApiKeyModal && (
-        <ApiKeyModal onSubmit={handleApiKeySubmit} />
+        <ApiKeyModal onSubmit={handleApiKeySubmit} missingProviders={missingKeys} />
       )}
     </div>
   );
+}
+
+function mergeResults(
+  pexels: PexelsVideo[],
+  pixabay: PixabayVideo[],
+  matchedResolution: Resolution
+): StockVideoItem[] {
+  const mappedPexels: StockVideoItem[] = pexels.flatMap((video) => {
+    const bestFile = selectPexelsFile(video.videoFiles, matchedResolution);
+    if (!bestFile) return [];
+
+    return [{
+      provider: "pexels",
+      id: video.id,
+      userName: video.userName,
+      duration: video.duration,
+      width: bestFile.width,
+      height: bestFile.height,
+      matchedResolution,
+      previewUrl: video.videoPictures[0]?.picture ?? null,
+      videoFiles: video.videoFiles,
+      isAiGenerated: false,
+    }];
+  });
+
+  const mappedPixabay: StockVideoItem[] = pixabay.flatMap((video) => {
+    const bestFile = selectPixabayFile(video.videoFiles, matchedResolution);
+    if (!bestFile) return [];
+
+    return [{
+      provider: "pixabay",
+      id: video.id,
+      userName: video.userName,
+      duration: video.duration,
+      width: bestFile.width,
+      height: bestFile.height,
+      matchedResolution,
+      previewUrl: bestFile.thumbnail || video.previewUrl || null,
+      videoFiles: video.videoFiles,
+      isAiGenerated: video.isAiGenerated,
+    }];
+  });
+
+  const combined = [...mappedPexels, ...mappedPixabay];
+  return combined.sort((a, b) => b.width * b.height - a.width * a.height);
+}
+
+function filterAiResults(videos: StockVideoItem[], includeAi: boolean) {
+  if (includeAi) {
+    return videos;
+  }
+
+  return videos.filter((video) => !(video.provider === "pixabay" && video.isAiGenerated));
+}
+
+function selectBestFile(video: StockVideoItem) {
+  if (video.provider === "pexels") {
+    return selectPexelsFile(video.videoFiles, video.matchedResolution);
+  }
+
+  return selectPixabayFile(video.videoFiles, video.matchedResolution);
+}
+
+function selectPexelsFile(
+  files: PexelsVideo["videoFiles"],
+  matchedResolution: Resolution
+) {
+  const cap = matchedResolution === "720p" ? 1280 * 720 : 1920 * 1080;
+  const sorted = [...files]
+    .filter((file) => file.fileType === "video/mp4")
+    .sort((a, b) => a.width * a.height - b.width * b.height);
+
+  const capped = sorted.filter((file) => file.width * file.height <= cap);
+  return capped[capped.length - 1] ?? sorted[sorted.length - 1] ?? null;
+}
+
+function selectPixabayFile(
+  files: PixabayVideo["videoFiles"],
+  matchedResolution: Resolution
+) {
+  const cap = matchedResolution === "720p" ? 1280 * 720 : 1920 * 1080;
+  const sorted = [...files].sort((a, b) => a.width * a.height - b.width * b.height);
+  const capped = sorted.filter((file) => file.width * file.height <= cap);
+  return capped[capped.length - 1] ?? sorted[sorted.length - 1] ?? null;
+}
+
+function getDownloadKey(video: StockVideoItem) {
+  return `${video.provider}-${video.id}`;
+}
+
+function getResolutionFallbacks(preferred: Resolution): Resolution[] {
+  return preferred === "720p" ? ["720p", "1080p"] : ["1080p"];
+}
+
+function normalizeSearchError(error: string) {
+  if (error === "API_KEY_NOT_SET") {
+    return "Pexels API key not set";
+  }
+
+  if (error === "PIXABAY_API_KEY_NOT_SET") {
+    return "Pixabay API key not set";
+  }
+
+  return error;
+}
+
+async function safeInvoke<T>(command: string, payload: Record<string, unknown>) {
+  try {
+    const result = await invoke<T>(command, payload);
+    return { result, error: null } as { result: T; error: null };
+  } catch (err) {
+    return { result: null, error: err as string } as { result: null; error: string };
+  }
 }
 
 export default StockVideoScreen;

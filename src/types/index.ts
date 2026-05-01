@@ -24,11 +24,14 @@ export interface Reciter {
 
 export type VideoSourceType = "upload" | "stock";
 
+export type StockVideoProvider = "pexels" | "pixabay";
+
 export interface VideoSource {
   type: VideoSourceType;
   localPath: string | null;
   stockVideoId: number | null;
   stockVideoUrl: string | null;
+  stockVideoProvider?: StockVideoProvider;
   width: number;
   height: number;
   duration: number;
@@ -73,6 +76,7 @@ export interface RenderJob {
 
 export interface AppSettings {
   pexelsApiKey: string | null;
+  pixabayApiKey: string | null;
   exportResolution: Resolution;
   autoCleanup: boolean;
   showVideoPreview: boolean;
@@ -104,10 +108,62 @@ export interface PexelsVideo {
   }>;
 }
 
+export interface PixabayVideoFile {
+  quality: string;
+  width: number;
+  height: number;
+  link: string;
+  size: number;
+  thumbnail: string;
+}
+
+export interface PixabayVideo {
+  id: number;
+  userName: string;
+  duration: number;
+  width: number;
+  height: number;
+  previewUrl: string;
+  videoFiles: PixabayVideoFile[];
+  isAiGenerated: boolean;
+}
+
+export interface SearchPixabayResponse {
+  videos: PixabayVideo[];
+  totalResults: number;
+}
+
 export interface SearchPexelsResponse {
   videos: PexelsVideo[];
   totalResults: number;
 }
+
+export type StockVideoItem =
+  | {
+      provider: "pexels";
+      id: number;
+      userName: string;
+      duration: number;
+      width: number;
+      height: number;
+      matchedResolution: Resolution;
+      previewUrl: string | null;
+      videoFiles: PexelsVideo["videoFiles"];
+      isAiGenerated: false;
+    }
+  | {
+      provider: "pixabay";
+      id: number;
+      userName: string;
+      duration: number;
+      width: number;
+      height: number;
+      matchedResolution: Resolution;
+      previewUrl: string | null;
+      videoFiles: PixabayVideoFile[];
+      isAiGenerated: boolean;
+    };
+
 
 export const DEFAULT_SUBTITLE_CONFIG: SubtitleConfig = {
   enabled: false,
@@ -128,6 +184,7 @@ export const DEFAULT_OUTPUT_SETTINGS: OutputSettings = {
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   pexelsApiKey: null,
+  pixabayApiKey: null,
   exportResolution: "720p",
   autoCleanup: true,
   showVideoPreview: true,

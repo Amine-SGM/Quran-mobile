@@ -137,7 +137,7 @@ export function HomeScreen({ onSurahSelect, onSettings, showError }: HomeScreenP
     return (
       <div className="home-screen error">
         <p>Failed to load surahs: {error}</p>
-        <button onClick={loadSurahs}>Retry</button>
+        <button onClick={() => loadSurahs()}>Retry</button>
       </div>
     );
   }

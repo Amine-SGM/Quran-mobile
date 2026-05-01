@@ -14,6 +14,7 @@ pub struct VideoSource {
     pub local_path: Option<String>,
     pub stock_video_id: Option<u32>,
     pub stock_video_url: Option<String>,
+    pub stock_video_provider: Option<String>,
     pub width: u32,
     pub height: u32,
     pub duration: f64,
@@ -82,8 +83,13 @@ pub async fn start_render(
     let video_path = if params.video_source.source_type == "upload" {
         PathBuf::from(params.video_source.local_path.unwrap_or_default())
     } else {
+        let provider_prefix = params
+            .video_source
+            .stock_video_provider
+            .unwrap_or_else(|| "pexels".to_string());
         cache_dir.join(format!(
-            "pexels_{}.mp4",
+            "{}_{}.mp4",
+            provider_prefix,
             params.video_source.stock_video_id.unwrap_or(0)
         ))
     };

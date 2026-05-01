@@ -14,6 +14,7 @@ interface SettingsScreenProps {
 
 interface AppSettings {
   pexelsApiKeySet: boolean;
+  pixabayApiKeySet: boolean;
   exportResolution: string;
   autoCleanup: boolean;
   showVideoPreview: boolean;
@@ -89,10 +90,24 @@ export function SettingsScreen({ onBack, showError, showSuccess }: SettingsScree
     );
   }
 
+  async function handleSetPixabayApiKey(key: string) {
+    await invoke("set_settings", { params: { pixabay_api_key: key } });
+    setSettings((prev) =>
+      prev ? { ...prev, pixabayApiKeySet: true } : null
+    );
+  }
+
   async function handleClearApiKey() {
     await invoke("set_settings", { params: { pexels_api_key: "" } });
     setSettings((prev) =>
       prev ? { ...prev, pexelsApiKeySet: false } : null
+    );
+  }
+
+  async function handleClearPixabayApiKey() {
+    await invoke("set_settings", { params: { pixabay_api_key: "" } });
+    setSettings((prev) =>
+      prev ? { ...prev, pixabayApiKeySet: false } : null
     );
   }
 
@@ -136,8 +151,19 @@ export function SettingsScreen({ onBack, showError, showSuccess }: SettingsScree
         <section className="settings-section">
           <ApiKeySettings
             isSet={settings?.pexelsApiKeySet ?? false}
+            label="Pexels API Key"
+            description="Required to search Pexels videos. Get a free key at"
+            docsUrl="https://www.pexels.com/api/new/"
             onSetKey={handleSetApiKey}
             onClearKey={handleClearApiKey}
+          />
+          <ApiKeySettings
+            isSet={settings?.pixabayApiKeySet ?? false}
+            label="Pixabay API Key"
+            description="Required to search Pixabay videos. Get a free key at"
+            docsUrl="https://pixabay.com/api/docs/"
+            onSetKey={handleSetPixabayApiKey}
+            onClearKey={handleClearPixabayApiKey}
           />
         </section>
 

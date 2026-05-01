@@ -81,6 +81,7 @@ pub async fn search_videos(
     api_key: &str,
     query: &str,
     orientation: Option<&str>,
+    size: Option<&str>,
     min_width: Option<u32>,
     min_height: Option<u32>,
     page: u32,
@@ -98,6 +99,10 @@ pub async fn search_videos(
 
     if let Some(orient) = orientation {
         url.push_str(&format!("&orientation={}", orient));
+    }
+
+    if let Some(size) = size {
+        url.push_str(&format!("&size={}", size));
     }
 
     if let Some(w) = min_width {

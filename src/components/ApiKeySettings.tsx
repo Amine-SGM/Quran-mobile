@@ -3,12 +3,18 @@ import "./ApiKeySettings.css";
 
 interface ApiKeySettingsProps {
   isSet: boolean;
+  label?: string;
+  description?: string;
+  docsUrl?: string;
   onSetKey: (key: string) => Promise<void>;
   onClearKey: () => Promise<void>;
 }
 
 export function ApiKeySettings({
   isSet,
+  label = "API Key",
+  description = "Required to search for stock videos.",
+  docsUrl,
   onSetKey,
   onClearKey,
 }: ApiKeySettingsProps) {
@@ -42,7 +48,7 @@ export function ApiKeySettings({
   };
 
   const handleClear = async () => {
-    if (confirm("Remove your Pexels API key?")) {
+    if (confirm(`Remove your ${label}?`)) {
       await onClearKey();
     }
   };
@@ -50,21 +56,19 @@ export function ApiKeySettings({
   return (
     <div className="api-key-settings">
       <div className="api-key-header">
-        <h3>Pexels API Key</h3>
+        <h3>{label}</h3>
         <span className={`api-key-status ${isSet ? "set" : "not-set"}`}>
           {isSet ? "Configured" : "Not Set"}
         </span>
       </div>
 
       <p className="api-key-description">
-        Required to search for stock videos. Get a free key at{" "}
-        <a
-          href="https://www.pexels.com/api/new/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          pexels.com
-        </a>
+        {description}{" "}
+        {docsUrl && (
+          <a href={docsUrl} target="_blank" rel="noopener noreferrer">
+            {docsUrl}
+          </a>
+        )}
       </p>
 
       {isSet && !showInput ? (
@@ -82,7 +86,7 @@ export function ApiKeySettings({
           <div className="input-group">
             <input
               type="password"
-              placeholder="Enter your Pexels API key"
+              placeholder={`Enter your ${label}`}
               value={key}
               onChange={(e) => {
                 setKey(e.target.value);
