@@ -33,6 +33,8 @@ pub struct RenderConfig {
     pub highlight_color: String,
     pub input_width: Option<u32>,
     pub input_height: Option<u32>,
+    pub input_rotation: i32,
+    pub input_sar: String,
     pub fonts_dir: Option<String>,
     pub total_duration: f64,
 }
@@ -42,6 +44,26 @@ pub struct FFmpegService;
 impl FFmpegService {
     pub fn new() -> Self {
         Self
+    }
+
+    #[cfg(target_os = "android")]
+    pub async fn get_video_dimensions(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32), String> {
+        let (w, h, _rotation, _sar) = self.get_video_metadata(app, path).await?;
+        Ok((w, h))
+    }
+
+    #[cfg(target_os = "android")]
+    pub async fn get_video_metadata(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32, i32, String), String> {
+        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
+        let info = ffmpeg
+            .get_media_information(path.to_string_lossy().to_string())
+            .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
+
+        if info.width == 0 && info.height == 0 {
+            return Err("No video stream found or failed to probe dimensions".to_string());
+        }
+
+        Ok((info.width, info.height, info.rotation, info.sample_aspect_ratio))
     }
 
     /// Build the complete FFmpeg merge command.
@@ -102,75 +124,106 @@ impl FFmpegService {
         // ── Build video filters ───────────────────────────────
         let mut vf_parts: Vec<String> = Vec::new();
 
-        // ── Aspect ratio logic ───────────────────────────────
-        let out_ar = config.width as f64 / config.height as f64;
-        let is_out_1_1_or_4_5 = (out_ar - 1.0).abs() < 0.1 || (out_ar - 0.8).abs() < 0.1;
-        let is_out_9_16 = (out_ar - 0.5625).abs() < 0.05;
-        let is_out_16_9 = (out_ar - 1.777).abs() < 0.05;
+    // ── Aspect ratio logic ───────────────────────────────
+    let out_ar = config.width as f64 / config.height as f64;
+    let is_out_1_1_or_4_5 = (out_ar - 1.0).abs() < 0.1 || (out_ar - 0.8).abs() < 0.1;
+    let is_out_9_16 = (out_ar - 0.5625).abs() < 0.05;
+    let is_out_16_9 = (out_ar - 1.777).abs() < 0.05;
 
-        // Use output dimensions as default if input not probed
-        let (in_w, in_h) = (
-            config.input_width.unwrap_or(config.width),
-            config.input_height.unwrap_or(config.height),
-        );
-        let in_ar = in_w as f64 / in_h as f64;
-        let is_in_1_1_or_4_5 = (in_ar - 1.0).abs() < 0.1 || (in_ar - 0.8).abs() < 0.1;
-        let is_in_16_9 = (in_ar - 1.777).abs() < 0.1;
-        let is_in_9_16 = (in_ar - 0.5625).abs() < 0.1;
+    // Use output dimensions as default if input not probed
+    let (in_w, in_h) = (  config.input_width.unwrap_or(config.width),
+        config.input_height.unwrap_or(config.height),
+    );
 
-        if is_out_1_1_or_4_5 {
-            // Rule 1: 1:1 or 4:5 > any > crop
+    // Apply rotation correction to display dimensions
+    let (display_w, display_h) = if config.input_rotation == 90 || config.input_rotation == -90 || config.input_rotation == 270 {
+        eprintln!("[FFmpeg] Rotation {} detected: swapping {}x{} -> {}x{}", config.input_rotation, in_w, in_h, in_h, in_w);
+        (in_h, in_w)
+    } else {
+        (in_w, in_h)
+    };
+
+    let in_ar = display_w as f64 / display_h as f64;
+    let is_in_1_1_or_4_5 = (in_ar - 1.0).abs() < 0.1 || (in_ar - 0.8).abs() < 0.1;
+    let is_in_16_9 = (in_ar - 1.777).abs() < 0.1;
+    let is_in_9_16 = (in_ar - 0.5625).abs() < 0.1;
+
+    eprintln!(
+        "[FFmpeg] Probed input: {}x{} rotation={} sar=\"{}\" -> display {}x{} (ar={:.3}), target {}x{} (ar={:.3})",
+        in_w, in_h, config.input_rotation, config.input_sar,
+        display_w, display_h, in_ar,
+        config.width, config.height, out_ar
+    );
+
+    // ── Normalize: reset SAR and pixel format, apply rotation ──
+    // setsar=1 ensures downstream scale/crop/pad see square-pixel frames.
+    // format=yuv420p guarantees a consistent pixel format for encoder.
+    if config.input_rotation == 90 {
+        vf_parts.push("transpose=1".into());
+    } else if config.input_rotation == -90 || config.input_rotation == 270 {
+        vf_parts.push("transpose=2".into());
+    } else if config.input_rotation == 270 {
+        vf_parts.push("transpose=2".into());
+    } else if config.input_rotation == 180 {
+        vf_parts.push("hflip".into());
+        vf_parts.push("vflip".into());
+    }
+    vf_parts.push("setsar=1".into());
+    vf_parts.push("format=yuv420p".into());
+
+    if is_out_1_1_or_4_5 {
+        eprintln!("[FFmpeg] Branch: out=1:1/4:5, in_ar={:.3} -> scale+increase+crop", in_ar);
+        vf_parts.push(format!(
+                "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{}",
+                config.width, config.height, config.width, config.height
+            ));
+    } else if is_out_9_16 {
+        if is_in_1_1_or_4_5 {
+            eprintln!("[FFmpeg] Branch: out=9:16, in=1:1/4:5 -> scale+decrease+pad");
+            vf_parts.push(format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                config.width, config.height, config.width, config.height
+            ));
+        } else if is_in_16_9 {
+            eprintln!("[FFmpeg] Branch: out=9:16, in=16:9 -> scale+increase+crop");
             vf_parts.push(format!(
                 "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{}",
                 config.width, config.height, config.width, config.height
             ));
-        } else if is_out_9_16 {
-            if is_in_1_1_or_4_5 {
-                // Rule 2: 9:16 > 1:1 or 4:5 > fill
-                vf_parts.push(format!(
-                    "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
-                    config.width, config.height, config.width, config.height
-                ));
-            } else if is_in_16_9 {
-                // Rule 3: 9:16 > 16:9 > fill then center crop to target
-                vf_parts.push(format!(
-                    "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{}",
-                    config.width, config.height, config.width, config.height
-                ));
-            } else {
-                // Default Fit
-                vf_parts.push(format!(
-                    "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
-                    config.width, config.height, config.width, config.height
-                ));
-            }
-        } else if is_out_16_9 {
-            if is_in_1_1_or_4_5 {
-                // Rule 4: 16:9 > 1:1 or 4:5 > fill
-                vf_parts.push(format!(
-                    "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
-                    config.width, config.height, config.width, config.height
-                ));
-            } else if is_in_9_16 {
-                // Rule 5: 16:9 > 9:16 > crop to 1:1 then fill to 16:9
-                vf_parts.push(format!(
-                    "crop=iw:iw,scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
-                    config.width, config.height, config.width, config.height
-                ));
-            } else {
-                // Default Fit
-                vf_parts.push(format!(
-                    "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
-                    config.width, config.height, config.width, config.height
-                ));
-            }
         } else {
-            // Default Catch-all Fit
+            eprintln!("[FFmpeg] Branch: out=9:16, in=other({:.3}) -> scale+decrease+pad", in_ar);
             vf_parts.push(format!(
                 "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
                 config.width, config.height, config.width, config.height
             ));
         }
+    } else if is_out_16_9 {
+        if is_in_1_1_or_4_5 {
+            eprintln!("[FFmpeg] Branch: out=16:9, in=1:1/4:5 -> scale+decrease+pad");
+            vf_parts.push(format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                config.width, config.height, config.width, config.height
+            ));
+        } else if is_in_9_16 {
+            eprintln!("[FFmpeg] Branch: out=16:9, in=9:16 -> crop=iw:iw+scale+decrease+pad");
+            vf_parts.push(format!(
+                "crop=iw:iw,scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                config.width, config.height, config.width, config.height
+            ));
+        } else {
+            eprintln!("[FFmpeg] Branch: out=16:9, in=other({:.3}) -> scale+decrease+pad", in_ar);
+            vf_parts.push(format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                config.width, config.height, config.width, config.height
+            ));
+        }
+    } else {
+        eprintln!("[FFmpeg] Branch: catch-all -> scale+decrease+pad");
+        vf_parts.push(format!(
+            "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+            config.width, config.height, config.width, config.height
+        ));
+    }
 
         // Subtitle overlay
         if config.subtitle_enabled {
@@ -410,18 +463,6 @@ impl FFmpegService {
 // ═══════════════════════════════════════════════════════════════════
 #[cfg(target_os = "android")]
 impl FFmpegService {
-    pub async fn get_video_dimensions(&self, app: &AppHandle, path: &PathBuf) -> Result<(u32, u32), String> {
-        let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();
-        let info = ffmpeg
-            .get_media_information(path.to_string_lossy().to_string())
-            .map_err(|e| format!("FFmpeg plugin error: {}", e))?;
-
-        if info.width == 0 && info.height == 0 {
-            return Err("No video stream found or failed to probe dimensions".to_string());
-        }
-
-        Ok((info.width, info.height))
-    }
 
     pub async fn get_duration(&self, app: &AppHandle, path: &PathBuf) -> Result<f64, String> {
         let ffmpeg = app.state::<tauri_plugin_ffmpeg::Ffmpeg<tauri::Wry>>();

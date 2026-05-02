@@ -25,6 +25,8 @@ pub struct MediaInfoResponse {
     pub width: u32,
     pub height: u32,
     pub duration: f64,
+    pub rotation: i32,
+    pub sample_aspect_ratio: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

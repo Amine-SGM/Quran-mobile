@@ -129,6 +129,15 @@ pub async fn start_render(
     }
 
     // ── Pre-step: Probe video dimensions for aspect ratio logic ───
+    #[cfg(target_os = "android")]
+    if let Ok((w, h, rotation, sar)) = ffmpeg.get_video_metadata(&app, &config.video_path).await {
+        config.input_width = Some(w);
+        config.input_height = Some(h);
+        config.input_rotation = rotation;
+        config.input_sar = sar;
+    }
+
+    #[cfg(not(target_os = "android"))]
     if let Ok((w, h)) = ffmpeg.get_video_dimensions(&app, &config.video_path).await {
         config.input_width = Some(w);
         config.input_height = Some(h);

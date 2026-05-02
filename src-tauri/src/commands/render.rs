@@ -179,6 +179,8 @@ pub async fn start_render(
         highlight_color: params.subtitle_config.highlight_color,
         input_width: None,
         input_height: None,
+        input_rotation: 0,
+        input_sar: String::new(),
         #[cfg(target_os = "android")]
         fonts_dir: Some("/system/fonts".to_string()),
         #[cfg(not(target_os = "android"))]

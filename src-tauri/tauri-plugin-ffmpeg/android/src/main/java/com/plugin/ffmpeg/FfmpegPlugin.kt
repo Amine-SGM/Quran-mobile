@@ -148,37 +148,54 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
 
                 val ret = JSObject()
 
-                if (info != null) {
-                    var width = 0
-                    var height = 0
+        if (info != null) {
+            var width = 0
+            var height = 0
+            var rotation = 0
+            var sampleAspectRatio = ""
 
-                    // Find the first video stream
-                    val streams = info.streams
-                    if (streams != null) {
-                        for (stream in streams) {
-                            val streamType = stream.type
-                            if (streamType != null && streamType == "video") {
-                                width = stream.width?.toInt() ?: 0
-                                height = stream.height?.toInt() ?: 0
-                                break
+            // Find the first video stream
+            val streams = info.streams
+            if (streams != null) {
+                for (stream in streams) {
+                    val streamType = stream.type
+                    if (streamType != null && streamType == "video") {
+                        width = stream.width?.toInt() ?: 0
+                        height = stream.height?.toInt() ?: 0
+
+                        // Extract SAR from stream
+                        sampleAspectRatio = stream.sampleAspectRatio ?: ""
+
+                        val tags = stream.tags
+                        if (tags != null) {
+                            val rotateTag = tags["rotate"]
+                            if (rotateTag != null) {
+                                rotation = rotateTag.toString().toIntOrNull() ?: 0
                             }
                         }
+                        break
                     }
+                }
+            }
 
-                    val duration = info.duration?.toDoubleOrNull() ?: 0.0
+            val duration = info.duration?.toDoubleOrNull() ?: 0.0
 
-                    ret.put("width", width)
-                    ret.put("height", height)
-                    ret.put("duration", duration)
+            ret.put("width", width)
+            ret.put("height", height)
+            ret.put("duration", duration)
+            ret.put("rotation", rotation)
+            ret.put("sampleAspectRatio", sampleAspectRatio)
 
-                    Log.d(TAG, "Media info: ${width}x${height}, duration=${duration}s")
-                    invoke.resolve(ret)
+            Log.d(TAG, "Media info: ${width}x${height}, rotation=${rotation}, sar=${sampleAspectRatio}, duration=${duration}s")
+            invoke.resolve(ret)
                 } else {
                     Log.e(TAG, "Failed to get media information for: $path")
-                    ret.put("width", 0)
-                    ret.put("height", 0)
-                    ret.put("duration", 0.0)
-                    invoke.resolve(ret)
+            ret.put("width", 0)
+            ret.put("height", 0)
+            ret.put("duration", 0.0)
+            ret.put("rotation", 0)
+            ret.put("sampleAspectRatio", "")
+            invoke.resolve(ret)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Media information error", e)
