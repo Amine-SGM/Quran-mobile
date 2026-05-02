@@ -166,12 +166,13 @@ class FfmpegPlugin(private val activity: Activity) : Plugin(activity) {
                         // Extract SAR from stream
                         sampleAspectRatio = stream.sampleAspectRatio ?: ""
 
+                        // Some videos (e.g. landscape stock videos) don't have a "rotate" tag.
+                        // StreamInformation.tags is a JSONObject; calling tags["rotate"] (i.e.
+                        // JSONObject.get()) throws JSONException when the key is absent.
+                        // Use has() + opt() to check first — no exception, no try-catch.
                         val tags = stream.tags
-                        if (tags != null) {
-                            val rotateTag = tags["rotate"]
-                            if (rotateTag != null) {
-                                rotation = rotateTag.toString().toIntOrNull() ?: 0
-                            }
+                        if (tags != null && tags.has("rotate")) {
+                            rotation = tags.opt("rotate")?.toString()?.toIntOrNull() ?: 0
                         }
                         break
                     }
