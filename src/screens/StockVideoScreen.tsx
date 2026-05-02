@@ -8,6 +8,7 @@ import type {
   SearchPexelsResponse,
   SearchPixabayResponse,
   StockVideoItem,
+  StockVideoProvider,
   VideoSource,
 } from "../types";
 import { VideoThumbnail } from "../components/VideoThumbnail";
@@ -45,6 +46,7 @@ export function StockVideoScreen({
   onSelect,
 }: StockVideoScreenProps) {
   const [query, setQuery] = useState("");
+  const [lastSearchedQuery, setLastSearchedQuery] = useState("");
   const [allVideos, setAllVideos] = useState<StockVideoItem[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -52,7 +54,8 @@ export function StockVideoScreen({
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
-  const [includeAi, setIncludeAi] = useState(false);
+  const [providerFilter, setProviderFilter] = useState<"all" | StockVideoProvider>("all");
+  const [aiOnly, setAiOnly] = useState(false);
   const [missingKeys, setMissingKeys] = useState<string[]>([]);
 
   useEffect(() => {
@@ -122,17 +125,20 @@ export function StockVideoScreen({
           await checkApiKeys();
         }
 
-        const merged = mergeResults(pexelsVideos, pixabayVideos, resolutionToTry);
+        const merged = mergeResults(pexelsVideos, pixabayVideos, resolutionToTry, aspectRatio);
         lastMerged = merged;
         lastErrors = errors;
 
         if (merged.length > 0) {
           setAllVideos(merged);
+          setLastSearchedQuery(effectiveQuery);
           return;
         }
       }
 
       setAllVideos(lastMerged);
+      setLastSearchedQuery(effectiveQuery);
+
 
       if (lastErrors.length > 0) {
         setError(lastErrors.map((msg) => normalizeSearchError(msg)).join(" | "));
@@ -215,23 +221,52 @@ export function StockVideoScreen({
             type="text"
             placeholder="Search stock videos..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (e.target.value.trim() !== lastSearchedQuery) {
+                setLastSearchedQuery("");
+              }
+            }}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
           />
           <button onClick={handleSearch} disabled={loading}>
-            {loading ? "Searching..." : "Search"}
+            {loading ? "Searching..." : lastSearchedQuery ? "Refresh" : "Search"}
           </button>
         </div>
         <div className="search-filters">
+          <div className="provider-filters" role="group" aria-label="Video provider filter">
+            <button
+              type="button"
+              className={providerFilter === "all" ? "active" : ""}
+              onClick={() => setProviderFilter("all")}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={providerFilter === "pexels" ? "active" : ""}
+              onClick={() => setProviderFilter("pexels")}
+            >
+              Pexels
+            </button>
+            <button
+              type="button"
+              className={providerFilter === "pixabay" ? "active" : ""}
+              onClick={() => setProviderFilter("pixabay")}
+            >
+              Pixabay
+            </button>
+          </div>
           <ToggleSwitch
-            label="Include AI-generated results"
-            checked={includeAi}
+            label="AI-generated only"
+            checked={aiOnly}
             onChange={(checked) => {
-              setIncludeAi(checked);
+              setAiOnly(checked);
             }}
           />
         </div>
       </div>
+
 
       {missingKeys.length === 1 && (
         <div className="notice-message">
@@ -241,8 +276,8 @@ export function StockVideoScreen({
 
       {error && <div className="error-message">{error}</div>}
 
-      <div className="video-grid">
-        {filterAiResults(allVideos, includeAi).map((video) => (
+      <div className="video-grid" data-ratio={aspectRatio}>
+        {filterVisibleResults(allVideos, providerFilter, aiOnly).map((video) => (
           <VideoThumbnail
             key={`${video.provider}-${video.id}`}
             video={video}
@@ -252,11 +287,12 @@ export function StockVideoScreen({
         ))}
       </div>
 
-      {filterAiResults(allVideos, includeAi).length === 0 && !loading && query && (
+      {filterVisibleResults(allVideos, providerFilter, aiOnly).length === 0 && !loading && query && (
         <div className="empty-state">
           <p>No videos found. Try a different search term.</p>
         </div>
       )}
+
 
       {downloading !== null && (
         <DownloadProgress progress={downloadProgress} />
@@ -269,10 +305,28 @@ export function StockVideoScreen({
   );
 }
 
+function matchesAspectRatio(
+  width: number,
+  height: number,
+  target: AspectRatio
+): boolean {
+  if (width <= 0 || height <= 0) return true;
+  const actual = width / height;
+  const targets: Record<AspectRatio, number> = {
+    "9:16": 9 / 16,
+    "4:5": 4 / 5,
+    "1:1": 1,
+    "16:9": 16 / 9,
+  };
+  const expected = targets[target];
+  return Math.abs(actual - expected) / expected <= 0.1;
+}
+
 function mergeResults(
   pexels: PexelsVideo[],
   pixabay: PixabayVideo[],
-  matchedResolution: Resolution
+  matchedResolution: Resolution,
+  aspectRatio: AspectRatio
 ): StockVideoItem[] {
   const mappedPexels: StockVideoItem[] = pexels.flatMap((video) => {
     const bestFile = selectPexelsFile(video.videoFiles, matchedResolution);
@@ -310,17 +364,32 @@ function mergeResults(
     }];
   });
 
-  const combined = [...mappedPexels, ...mappedPixabay];
+  const combined = [
+    ...mappedPexels.filter((video) => matchesAspectRatio(video.width, video.height, aspectRatio)),
+    ...mappedPixabay,
+  ];
+
   return combined.sort((a, b) => b.width * b.height - a.width * a.height);
 }
 
-function filterAiResults(videos: StockVideoItem[], includeAi: boolean) {
-  if (includeAi) {
-    return videos;
-  }
+function filterVisibleResults(
+  videos: StockVideoItem[],
+  providerFilter: "all" | StockVideoProvider,
+  aiOnly: boolean
+) {
+  return videos.filter((video) => {
+    if (providerFilter !== "all" && video.provider !== providerFilter) {
+      return false;
+    }
 
-  return videos.filter((video) => !(video.provider === "pixabay" && video.isAiGenerated));
+    if (aiOnly) {
+      return video.provider === "pixabay" && video.isAiGenerated;
+    }
+
+    return true;
+  });
 }
+
 
 function selectBestFile(video: StockVideoItem) {
   if (video.provider === "pexels") {

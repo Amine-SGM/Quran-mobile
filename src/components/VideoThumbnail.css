@@ -19,7 +19,7 @@
 .thumbnail-image {
   position: relative;
   width: 100%;
-  aspect-ratio: 9/16;
+  aspect-ratio: var(--thumb-ratio, 9/16);
   background: #1a1a2e;
 }
 

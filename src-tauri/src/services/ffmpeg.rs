@@ -132,9 +132,9 @@ impl FFmpegService {
                     config.width, config.height, config.width, config.height
                 ));
             } else if is_in_16_9 {
-                // Rule 3: 9:16 > 16:9 > crop to 1:1 then fill to 9:16
+                // Rule 3: 9:16 > 16:9 > fill then center crop to target
                 vf_parts.push(format!(
-                    "crop=ih:ih,scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                    "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{}",
                     config.width, config.height, config.width, config.height
                 ));
             } else {
