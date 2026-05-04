@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+﻿use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::AppHandle;
 
@@ -155,45 +155,51 @@ impl FFmpegService {
         config.width, config.height, out_ar
     );
 
-    // ── Normalize: reset SAR and pixel format, apply rotation ──
-    // setsar=1 ensures downstream scale/crop/pad see square-pixel frames.
-    // format=yuv420p guarantees a consistent pixel format for encoder.
+    // -- Normalize: pixel format, SAR, rotation --
+    // CRITICAL ORDER:
+    //   1. format=yuv420p FIRST -- stock videos from Pexels/Pixabay often use
+    //      yuvj420p, yuv422p, or yuv420p10le.  Running transpose or setsar
+    //      before converting the pixel format causes ffmpeg-kit on Android to
+    //      fail with "failed to inject frame into filter network: invalid
+    //      argument" because libavfilter cannot negotiate incompatible formats.
+    //   2. setsar=1 -- reset sample aspect ratio so scale/crop/pad see square pixels.
+    //   3. Rotation (transpose / hflip+vflip) -- applied after normalization.
+    vf_parts.push("format=yuv420p".into());
+    vf_parts.push("setsar=1".into());
     if config.input_rotation == 90 {
         vf_parts.push("transpose=1".into());
     } else if config.input_rotation == -90 || config.input_rotation == 270 {
         vf_parts.push("transpose=2".into());
-    } else if config.input_rotation == 270 {
-        vf_parts.push("transpose=2".into());
     } else if config.input_rotation == 180 {
-        vf_parts.push("hflip".into());
-        vf_parts.push("vflip".into());
+        vf_parts.push("hflip,vflip".into());
     }
-    vf_parts.push("setsar=1".into());
-    vf_parts.push("format=yuv420p".into());
 
+    // -- Scale / crop / pad branch --
+    // Each branch ends with scale=trunc(iw/2)*2:trunc(ih/2)*2 to guarantee
+    // even dimensions, which libx264 requires.
     if is_out_1_1_or_4_5 {
         eprintln!("[FFmpeg] Branch: out=1:1/4:5, in_ar={:.3} -> scale+increase+crop", in_ar);
         vf_parts.push(format!(
-                "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{}",
-                config.width, config.height, config.width, config.height
-            ));
+            "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{},scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            config.width, config.height, config.width, config.height
+        ));
     } else if is_out_9_16 {
         if is_in_1_1_or_4_5 {
             eprintln!("[FFmpeg] Branch: out=9:16, in=1:1/4:5 -> scale+decrease+pad");
             vf_parts.push(format!(
-                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black,scale=trunc(iw/2)*2:trunc(ih/2)*2",
                 config.width, config.height, config.width, config.height
             ));
         } else if is_in_16_9 {
             eprintln!("[FFmpeg] Branch: out=9:16, in=16:9 -> scale+increase+crop");
             vf_parts.push(format!(
-                "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{}",
+                "scale={}:{}:force_original_aspect_ratio=increase,crop={}:{},scale=trunc(iw/2)*2:trunc(ih/2)*2",
                 config.width, config.height, config.width, config.height
             ));
         } else {
             eprintln!("[FFmpeg] Branch: out=9:16, in=other({:.3}) -> scale+decrease+pad", in_ar);
             vf_parts.push(format!(
-                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black,scale=trunc(iw/2)*2:trunc(ih/2)*2",
                 config.width, config.height, config.width, config.height
             ));
         }
@@ -201,26 +207,26 @@ impl FFmpegService {
         if is_in_1_1_or_4_5 {
             eprintln!("[FFmpeg] Branch: out=16:9, in=1:1/4:5 -> scale+decrease+pad");
             vf_parts.push(format!(
-                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black,scale=trunc(iw/2)*2:trunc(ih/2)*2",
                 config.width, config.height, config.width, config.height
             ));
         } else if is_in_9_16 {
             eprintln!("[FFmpeg] Branch: out=16:9, in=9:16 -> crop=iw:iw+scale+decrease+pad");
             vf_parts.push(format!(
-                "crop=iw:iw,scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                "crop=iw:iw,scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black,scale=trunc(iw/2)*2:trunc(ih/2)*2",
                 config.width, config.height, config.width, config.height
             ));
         } else {
             eprintln!("[FFmpeg] Branch: out=16:9, in=other({:.3}) -> scale+decrease+pad", in_ar);
             vf_parts.push(format!(
-                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+                "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black,scale=trunc(iw/2)*2:trunc(ih/2)*2",
                 config.width, config.height, config.width, config.height
             ));
         }
     } else {
         eprintln!("[FFmpeg] Branch: catch-all -> scale+decrease+pad");
         vf_parts.push(format!(
-            "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black",
+            "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2:black,scale=trunc(iw/2)*2:trunc(ih/2)*2",
             config.width, config.height, config.width, config.height
         ));
     }

@@ -21,7 +21,6 @@ pub struct PixabayVideo {
     pub height: u32,
     pub preview_url: String,
     pub video_files: Vec<PixabayVideoFile>,
-    pub is_ai_generated: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +32,7 @@ pub struct SearchPixabayResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 struct PixabayApiResponse {
+    #[allow(dead_code)]
     total: u32,
     #[serde(rename = "totalHits")]
     total_hits: u32,
@@ -45,9 +45,6 @@ struct PixabayApiVideo {
     user: String,
     duration: u32,
     videos: PixabayApiVideoVariants,
-    #[serde(default)]
-    #[serde(alias = "is_ai_generated", alias = "ai_generated", alias = "is_ai")]
-    is_ai_generated: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -141,7 +138,6 @@ pub async fn search_videos(
                 height,
                 preview_url,
                 video_files: files,
-                is_ai_generated: hit.is_ai_generated.unwrap_or(false),
             })
         })
         .collect();

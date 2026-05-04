@@ -15,7 +15,6 @@ export function VideoThumbnail({
   const thumbnail = video.previewUrl;
   const duration = formatDuration(video.duration);
   const providerLabel = video.provider === "pexels" ? "Pexels" : "Pixabay";
-  const showAiBadge = video.provider === "pixabay" && video.isAiGenerated;
 
   return (
     <div
@@ -29,7 +28,6 @@ export function VideoThumbnail({
           <div className="placeholder">No preview</div>
         )}
         <div className="provider-badge">{providerLabel}</div>
-        {showAiBadge && <div className="ai-badge">AI</div>}
         <div className="play-overlay">
           <span className="play-icon">▶</span>
         </div>

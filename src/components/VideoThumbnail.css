@@ -82,18 +82,6 @@
   letter-spacing: 0.3px;
 }
 
-.ai-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(255, 100, 100, 0.9);
-  color: #fff;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.3px;
-}
-
 .thumbnail-info {
   padding: 10px;
   display: flex;

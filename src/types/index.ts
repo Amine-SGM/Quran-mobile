@@ -125,7 +125,6 @@ export interface PixabayVideo {
   height: number;
   previewUrl: string;
   videoFiles: PixabayVideoFile[];
-  isAiGenerated: boolean;
 }
 
 export interface SearchPixabayResponse {
@@ -138,31 +137,17 @@ export interface SearchPexelsResponse {
   totalResults: number;
 }
 
-export type StockVideoItem =
-  | {
-      provider: "pexels";
-      id: number;
-      userName: string;
-      duration: number;
-      width: number;
-      height: number;
-      matchedResolution: Resolution;
-      previewUrl: string | null;
-      videoFiles: PexelsVideo["videoFiles"];
-      isAiGenerated: false;
-    }
-  | {
-      provider: "pixabay";
-      id: number;
-      userName: string;
-      duration: number;
-      width: number;
-      height: number;
-      matchedResolution: Resolution;
-      previewUrl: string | null;
-      videoFiles: PixabayVideoFile[];
-      isAiGenerated: boolean;
-    };
+export type StockVideoItem = {
+  provider: StockVideoProvider;
+  id: number;
+  userName: string;
+  duration: number;
+  width: number;
+  height: number;
+  matchedResolution: Resolution;
+  previewUrl: string | null;
+  videoFiles: PexelsVideo["videoFiles"] | PixabayVideoFile[];
+};
 
 
 export const DEFAULT_SUBTITLE_CONFIG: SubtitleConfig = {

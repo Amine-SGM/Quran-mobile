@@ -108,7 +108,6 @@ pub struct PixabayVideo {
     pub height: u32,
     pub preview_url: String,
     pub video_files: Vec<PixabayVideoFile>,
-    pub is_ai_generated: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,7 +165,6 @@ pub async fn search_pexels_videos(
     let size_filter = pexels_size_for_resolution(&resolution);
     let per_page = per_page.unwrap_or(20);
 
-    // Randomize page (1-4) using timestamp for variety
     let page = (std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis())
@@ -293,7 +291,6 @@ pub async fn search_pixabay_videos(
                         thumbnail: file.thumbnail,
                     })
                     .collect(),
-                is_ai_generated: video.is_ai_generated,
             })
             .collect(),
         total_results: response.total_results,
