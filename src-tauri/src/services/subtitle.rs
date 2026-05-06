@@ -10,6 +10,11 @@ pub struct SubtitleLine {
     pub word_timings: Option<Vec<(f64, f64)>>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ArabicWordSpan {
+    original: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubtitleRenderConfig {
     pub font_size: u32,
@@ -183,8 +188,7 @@ Dialogue: 0,{},{},CustomText,,0,0,0,,{}"#,
         for line in segmented_lines.iter() {
             match &line.word_timings {
                 Some(timings) => {
-                    let clean = clean_arabic_text(&line.arabic_text);
-                    let words: Vec<&str> = clean.split_whitespace().collect();
+                    let words = extract_arabic_word_spans(&line.arabic_text);
 
                     if !words.is_empty() && words.len() == timings.len() {
                         for active_word_index in 0..words.len() {
@@ -257,8 +261,7 @@ Dialogue: 0,{},{},Translation,,0,0,0,,{}"#,
         line: &SubtitleLine,
         config: &SubtitleRenderConfig,
     ) -> Vec<SubtitleLine> {
-        let clean_text = clean_arabic_text(&line.arabic_text);
-        let arabic_words: Vec<&str> = clean_text.split_whitespace().collect();
+        let arabic_words = extract_arabic_word_spans(&line.arabic_text);
         let total_arabic_words = arabic_words.len();
         if total_arabic_words == 0 {
             return vec![line.clone()];
@@ -318,7 +321,7 @@ Dialogue: 0,{},{},Translation,,0,0,0,,{}"#,
                 break;
             }
 
-            let arabic_text = arabic_words[a_start..a_end].join(" ");
+            let arabic_text = join_original_words(&arabic_words[a_start..a_end]);
 
             let english_translation = if trans_words_per_seg > 0 {
                 let t_start = i * trans_words_per_seg;
@@ -412,6 +415,15 @@ Dialogue: 0,{},{},Translation,,0,0,0,,{}"#,
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_words(words: &[&str]) -> Vec<ArabicWordSpan> {
+        words
+            .iter()
+            .map(|word| ArabicWordSpan {
+                original: (*word).to_string(),
+            })
+            .collect()
+    }
 
     #[test]
     fn test_segment_line_with_timings() {
@@ -509,7 +521,7 @@ mod tests {
 
     #[test]
     fn test_build_active_word_text() {
-        let words = vec!["word1", "word2", "word3"];
+        let words = test_words(&["word1", "word2", "word3"]);
         let result = build_active_word_text(&words, 1, "#FFD700");
 
         assert_eq!(
@@ -520,10 +532,30 @@ mod tests {
 
     #[test]
     fn test_build_first_active_word_text() {
-        let words = vec!["word1", "word2", "word3"];
+        let words = test_words(&["word1", "word2", "word3"]);
         let result = build_first_active_word_text(&words);
 
         assert_eq!(result, "word1\u{200E}{\\rArabic} word2 word3");
+    }
+
+    #[test]
+    fn test_extract_arabic_word_spans_preserves_original_text() {
+        let words = extract_arabic_word_spans("قُلْۖ هُوَۚ ٱللَّهُ");
+
+        assert_eq!(
+            words,
+            vec![
+                ArabicWordSpan {
+                    original: "قُلْۖ".to_string(),
+                },
+                ArabicWordSpan {
+                    original: "هُوَۚ".to_string(),
+                },
+                ArabicWordSpan {
+                    original: "ٱللَّهُ".to_string(),
+                },
+            ]
+        );
     }
 
     #[test]
@@ -637,6 +669,45 @@ mod tests {
         // Cleanup
         std::fs::remove_file(&ass_path).ok();
     }
+
+    #[test]
+    fn test_ass_generation_preserves_quranic_marks_in_output() {
+        let service = SubtitleService::new();
+        let config = SubtitleRenderConfig {
+            font_size: 32,
+            arabic_color: "#FFFFFF".to_string(),
+            translation_color: "#CCCCCC".to_string(),
+            position: "middle".to_string(),
+            show_translation: false,
+            translation_font_size: 24,
+            surah_name: "Test".to_string(),
+            custom_text: "".to_string(),
+            width: 1080,
+            height: 1920,
+            highlight_color: "#FFD700".to_string(),
+        };
+
+        let lines = vec![SubtitleLine {
+            arabic_text: "قُلْۖ هُوَۚ ٱللَّهُ أَحَدٌ".to_string(),
+            english_translation: None,
+            start_time: 0.0,
+            end_time: 4.0,
+            word_timings: Some(vec![(0.0, 1.0), (1.0, 2.0), (2.0, 3.0), (3.0, 4.0)]),
+        }];
+
+        let output_dir = std::env::temp_dir();
+        let ass_path = output_dir.join("test_preserve_quranic_marks.ass");
+        service
+            .generate_ass_file(&lines, &config, &ass_path)
+            .unwrap();
+
+        let content = std::fs::read_to_string(&ass_path).unwrap();
+
+        assert!(content.contains("قُلْۖ\u{200E}{\\rArabic} هُوَۚ ٱللَّهُ أَحَدٌ"));
+        assert!(content.contains("قُلْۖ \u{200E}{\\1c&H00D7FF&}هُوَۚ\u{200E}{\\rArabic} ٱللَّهُ أَحَدٌ"));
+
+        std::fs::remove_file(&ass_path).ok();
+    }
 }
 
 impl Default for SubtitleService {
@@ -646,14 +717,55 @@ impl Default for SubtitleService {
 }
 
 fn clean_arabic_text(text: &str) -> String {
-    // Remove Quranic pause marks and other symbols that are not usually spoken separate words
-    // Symbols to remove: ۖ, ۗ, ۚ, ۛ, ۜ, ۠, ۡ, ۦ, ۧ, ۨ, ۩, ۝
-    let markers = [
-        '\u{06D6}', '\u{06D7}', '\u{06D8}', '\u{06D9}', '\u{06DA}', '\u{06DB}', '\u{06DC}',
-        '\u{06DF}', '\u{06E0}', '\u{06E2}', '\u{06E5}', '\u{06E6}', '\u{06E7}', '\u{06E8}',
-        '\u{06EA}', '\u{06EB}', '\u{06EC}', '\u{06DD}',
-    ];
-    text.chars().filter(|c| !markers.contains(c)).collect()
+    text.chars()
+        .filter(|c| !is_removed_quranic_marker(*c))
+        .collect()
+}
+
+fn is_removed_quranic_marker(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{06D6}'
+            | '\u{06D7}'
+            | '\u{06D8}'
+            | '\u{06D9}'
+            | '\u{06DA}'
+            | '\u{06DB}'
+            | '\u{06DC}'
+            | '\u{06DF}'
+            | '\u{06E0}'
+            | '\u{06E2}'
+            | '\u{06E5}'
+            | '\u{06E6}'
+            | '\u{06E7}'
+            | '\u{06E8}'
+            | '\u{06EA}'
+            | '\u{06EB}'
+            | '\u{06EC}'
+            | '\u{06DD}'
+    )
+}
+
+fn extract_arabic_word_spans(text: &str) -> Vec<ArabicWordSpan> {
+    text.split_whitespace()
+        .filter_map(|word| {
+            if clean_arabic_text(word).is_empty() {
+                None
+            } else {
+                Some(ArabicWordSpan {
+                    original: word.to_string(),
+                })
+            }
+        })
+        .collect()
+}
+
+fn join_original_words(words: &[ArabicWordSpan]) -> String {
+    words
+        .iter()
+        .map(|word| word.original.as_str())
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn format_ass_time(seconds: f64) -> String {
@@ -709,7 +821,7 @@ fn build_active_word_window(
 }
 
 fn build_active_word_text(
-    words: &[&str],
+    words: &[ArabicWordSpan],
     active_word_index: usize,
     highlight_color: &str,
 ) -> String {
@@ -724,31 +836,31 @@ fn build_active_word_text(
                 if index + 1 < words.len() {
                     format!(
                         "{}{{\\1c{}}}{}{}{{\\rArabic}}",
-                        lrm, highlight_color, word, lrm
+                        lrm, highlight_color, word.original, lrm
                     )
                 } else {
-                    format!("{}{{\\1c{}}}{}", lrm, highlight_color, word)
+                    format!("{}{{\\1c{}}}{}", lrm, highlight_color, word.original)
                 }
             } else {
-                (*word).to_string()
+                word.original.clone()
             }
         })
         .collect::<Vec<_>>()
         .join(" ")
 }
 
-fn build_first_active_word_text(words: &[&str]) -> String {
+fn build_first_active_word_text(words: &[ArabicWordSpan]) -> String {
     let lrm = "\u{200E}";
 
     if let Some((first_word, remaining_words)) = words.split_first() {
         if remaining_words.is_empty() {
-            (*first_word).to_string()
+            first_word.original.clone()
         } else {
             format!(
                 "{}{}{{\\rArabic}} {}",
-                first_word,
+                first_word.original,
                 lrm,
-                remaining_words.join(" ")
+                join_original_words(remaining_words)
             )
         }
     } else {
